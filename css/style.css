@@ -246,3 +246,9 @@ body.view-cockpit .keyhint { bottom: auto; top: 196px; left: auto; right: 16px; 
 .dbReal table{width:100%;border-collapse:collapse;margin-top:8px}
 .dbReal th,.dbReal td{text-align:left;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.07);vertical-align:top}
 .dbReal th{color:#7f93a8;font-weight:500}.dbReal tr.you td{color:#00ff88}.dbReal small{color:#7f93a8}.dbReal .src{color:#7f93a8;font-size:12px}
+/* small screens: let long cards scroll */
+.modal .card{max-height:calc(100dvh - 24px);overflow-y:auto}
+@media (max-width:720px){.intro .row{flex-wrap:wrap;gap:8px}.intro .row>*{flex:1 1 100%;margin-left:0;justify-content:center}}
+body:has(#intro:not([hidden])) #director{visibility:hidden}
+.mobileNote{display:none;color:#ffb300;font-size:14px}
+@media (hover:none) and (pointer:coarse){.mobileNote{display:block}}

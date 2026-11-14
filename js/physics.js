@@ -1,3 +1,4 @@
+/* AI-assisted: written with the help of Claude (Anthropic) under the project author's direction. */
 /* Mission: Beyond Earth — launch physics.
  * 2D flight in the launch plane, real SI units. Earth-centred, the pad starts at (0, R).
  * Gravity (inverse square), exponential atmosphere, drag, two stages with

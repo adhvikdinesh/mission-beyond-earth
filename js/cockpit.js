@@ -1,3 +1,4 @@
+/* AI-assisted: written with the help of Claude (Anthropic) under the project author's direction. */
 /* Mission: Beyond Earth — the 3D cockpit, drawn on top of the outside world.
  * Units are metres; the pilot's eye is at the origin looking down -z.
  * Live instrument screens, a throttle lever, guarded switches and a gloved hand

@@ -1,3 +1,4 @@
+/* AI-assisted: written with the help of Claude (Anthropic) under the project author's direction. */
 /* Real satellites that watch fires from orbit (public NASA / USGS mission facts).
  * Shown in the debrief so players can compare their design to the real thing. */
 window.REAL_MISSIONS = [

@@ -1,3 +1,4 @@
+/* AI-assisted: written with the help of Claude (Anthropic) under the project author's direction. */
 /* Mission: Beyond Earth — launch game logic: phases, controls, Flight Director, debrief. */
 (function () {
   "use strict";

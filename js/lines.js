@@ -1,3 +1,4 @@
+/* AI-assisted: written with the help of Claude (Anthropic) under the project author's direction. */
 /* Flight Director lines.
  * Edit these to change what the Flight Director says at each moment.
  * Keep each line short: one or two sentences.

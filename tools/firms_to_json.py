@@ -1,3 +1,4 @@
+# AI-assisted: written with the help of Claude (Anthropic) under the project author's direction.
 """Convert a NASA FIRMS active-fire CSV into data/fires.json for the Operations phase.
 
 Get the CSV from https://firms.modaps.eosdis.nasa.gov/download/ (or the "Active Fire Data"

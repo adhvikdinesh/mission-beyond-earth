@@ -1,3 +1,4 @@
+/* AI-assisted: written with the help of Claude (Anthropic) under the project author's direction. */
 /* Mission: Beyond Earth — the low-altitude view from the cockpit (pad to ~26 km).
  * Units are metres. East (downrange, over the Atlantic) is +x, north is -z, up is +y.
  * The pad sits at the origin, a few kilometres inland from the coast at Kourou.

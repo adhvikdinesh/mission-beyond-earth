@@ -1,3 +1,4 @@
+/* AI-assisted: written with the help of Claude (Anthropic) under the project author's direction. */
 /* Mission: Beyond Earth — Operations: one day in orbit.
  * A sun-synchronous polar orbit (crosses the equator at 10:30 local time going south)
  * flown for 24 hours over real NASA FIRMS fire detections. Power, battery, storage and

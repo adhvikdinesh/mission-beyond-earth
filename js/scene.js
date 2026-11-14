@@ -1,3 +1,4 @@
+/* AI-assisted: written with the help of Claude (Anthropic) under the project author's direction. */
 /* Mission: Beyond Earth — 3D scene (three.js r128).
  * Scene units: 1 = Earth's radius. The launch plane passes through Kourou, heading east.
  */

@@ -11,15 +11,23 @@
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
 
+  /* A soft puff as an alpha mask over a single solid colour (no colour data in the
+   * transparent pixels, so it filters cleanly on every GPU). */
   function puffTexture(tint) {
-    const c = document.createElement("canvas"); c.width = c.height = 128; const x = c.getContext("2d");
+    const N = 128, alpha = new Float32Array(N * N);
     for (let i = 0; i < 18; i++) {
       const px = rnd(30, 98), py = rnd(38, 90), r = rnd(18, 36);
-      const g = x.createRadialGradient(px, py, 0, px, py, r);
-      g.addColorStop(0, tint + "0.55)"); g.addColorStop(1, tint + "0)");
-      x.fillStyle = g; x.beginPath(); x.arc(px, py, r, 0, Math.PI * 2); x.fill();
+      for (let y = Math.max(0, Math.floor(py - r)); y < Math.min(N, Math.ceil(py + r)); y++)
+        for (let x = Math.max(0, Math.floor(px - r)); x < Math.min(N, Math.ceil(px + r)); x++) {
+          const d = Math.hypot(x - px, y - py) / r; if (d >= 1) continue;
+          const a = 0.55 * (1 - d), o = y * N + x; alpha[o] = alpha[o] + a * (1 - alpha[o]);
+        }
     }
-    return new THREE.CanvasTexture(c);
+    const rgb = tint.match(/\d+/g).map(Number), data = new Uint8Array(N * N * 4);
+    for (let o = 0; o < N * N; o++) { data[o * 4] = rgb[0]; data[o * 4 + 1] = rgb[1]; data[o * 4 + 2] = rgb[2]; data[o * 4 + 3] = Math.round(Math.min(1, alpha[o]) * 255); }
+    const t = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
+    t.generateMipmaps = true; t.minFilter = THREE.LinearMipmapLinearFilter; t.magFilter = THREE.LinearFilter; t.flipY = true; t.needsUpdate = true;
+    return t;
   }
 
   /* Ground texture: jungle to the west, a sandy coast, the Atlantic to the east. */
@@ -159,21 +167,21 @@
 
   function updateSmoke(dt, flame, alt) {
     smokeTime += dt;
-    if (flame > 0.2 && alt < 400 && smokeTime > 0.05) {
+    if (flame > 0.2 && alt < 250 && smokeTime > 0.08) {
       smokeTime = 0;
       for (let k = 0; k < 3; k++) {
         const m = new THREE.SpriteMaterial({ map: puffTex, transparent: true, depthWrite: false, opacity: 0.9 });
-        const sp = new THREE.Sprite(m); sp.scale.setScalar(rnd(15, 30));
+        const sp = new THREE.Sprite(m); const s0 = rnd(15, 30); sp.scale.setScalar(s0);
         const a = Math.random() * Math.PI * 2; sp.position.set(0, rnd(2, 8), 0);
-        sp.userData = { v: new THREE.Vector3(Math.cos(a) * rnd(15, 45), rnd(2, 8), Math.sin(a) * rnd(15, 45)), age: 0 };
+        sp.userData = { s0, v: new THREE.Vector3(Math.cos(a) * rnd(15, 45), rnd(2, 8), Math.sin(a) * rnd(15, 45)), age: 0 };
         scene.add(sp); smoke.push(sp);
       }
     }
     for (let i = smoke.length - 1; i >= 0; i--) {
       const sp = smoke[i], u = sp.userData; u.age += dt;
       sp.position.addScaledVector(u.v, dt); u.v.multiplyScalar(0.985);
-      sp.scale.multiplyScalar(1 + dt * 0.35); sp.material.opacity = Math.max(0, 0.9 - u.age / 14);
-      if (u.age > 14) { scene.remove(sp); sp.material.dispose(); smoke.splice(i, 1); }
+      sp.scale.setScalar(Math.min(140, u.s0 * (1 + u.age * 0.45))); sp.material.opacity = Math.max(0, 0.75 * (1 - u.age / 12));
+      if (u.age > 12) { scene.remove(sp); sp.material.dispose(); smoke.splice(i, 1); }
     }
   }
 

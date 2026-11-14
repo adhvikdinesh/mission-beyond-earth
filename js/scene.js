@@ -19,12 +19,14 @@
   const EAST0 = eastAt(SITE.lon);
   // make EAST0 exactly perpendicular to UP0
   EAST0.sub(UP0.clone().multiplyScalar(EAST0.dot(UP0))).normalize();
+  // downrange direction: due north from Kourou, toward a polar orbit
+  const DR0 = new THREE.Vector3(0, 1, 0).sub(UP0.clone().multiplyScalar(UP0.y)).normalize();
   const SUN = UP0.clone().multiplyScalar(0.55).add(EAST0.clone().multiplyScalar(0.8)).add(new THREE.Vector3(0, 0.25, 0)).normalize();
 
   /** 2D flight-plane coordinates (metres) to a scene position. */
   function planeToWorld(x, y, out) {
     out = out || new THREE.Vector3();
-    return out.copy(EAST0).multiplyScalar(x / R_M).addScaledVector(UP0, y / R_M);
+    return out.copy(DR0).multiplyScalar(x / R_M).addScaledVector(UP0, y / R_M);
   }
 
   const S = {};
@@ -166,7 +168,7 @@
     function setTargetOrbit(altM) {
       if (ring) scene.remove(ring);
       const r = 1 + altM / R_M, pts = [];
-      for (let i = 0; i <= 256; i++) { const a = i / 256 * Math.PI * 2; pts.push(EAST0.clone().multiplyScalar(Math.sin(a) * r).addScaledVector(UP0, Math.cos(a) * r)); }
+      for (let i = 0; i <= 256; i++) { const a = i / 256 * Math.PI * 2; pts.push(DR0.clone().multiplyScalar(Math.sin(a) * r).addScaledVector(UP0, Math.cos(a) * r)); }
       ring = new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineDashedMaterial({ color: 0xffb300, dashSize: 0.02, gapSize: 0.02, transparent: true, opacity: 0.6 }));
       ring.computeLineDistances(); scene.add(ring);
     }
@@ -194,7 +196,7 @@
       st.up.copy(st.pos).normalize();
       // local downrange direction in the launch plane
       const r = Math.hypot(s.x, s.y), ex = s.y / r, ey = -s.x / r;
-      st.east.copy(EAST0).multiplyScalar(ex).addScaledVector(UP0, ey).normalize();
+      st.east.copy(DR0).multiplyScalar(ex).addScaledVector(UP0, ey).normalize();
       st.alt = r - R_M; st.ground = R_M * Math.atan2(s.x, s.y); st.pitch = s.pitch; st.flame = info.flame; st.shake = info.shake || 0;
       if (info.trail) {
         if (!lastTrail || lastTrail.distanceTo(st.pos) > 0.0004) {

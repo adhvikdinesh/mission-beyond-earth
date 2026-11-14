@@ -3,6 +3,7 @@
  * Keep each line short: one or two sentences.
  */
 window.LINES = {
+  design: "Commander, before we fly, design the satellite. Every part costs money, mass and power. Choose wisely.",
   prelaunch: "Good morning, Commander. We're on the pad at Kourou. Run the Go/No-Go poll before we light the engines.",
   countdown: "Final countdown. All systems are GO. Stand by for ignition.",
   pollDone: "All stations are GO. Launch when ready, then push the throttle up to lift off.",

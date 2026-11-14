@@ -68,7 +68,39 @@
   <button type="button" id="btnVoice" aria-pressed="true">Voice on</button>
 </div>
 
-<div class="modal" id="poll">
+<div class="modal" id="design">
+  <div class="card xwide">
+    <div class="eyebrow">Step 1 · Mission design</div>
+    <div class="dhead">
+      <div>
+        <h2>EarthWatch-1</h2>
+        <p class="sub" id="mGoal"></p>
+      </div>
+      <div class="dfacts">
+        <div><span>Budget</span><b id="mBudget"></b></div>
+        <div><span>Orbit</span><b>500 km, polar</b></div>
+        <div><span>Launch</span><b>Lynx-2 · $7.5M</b></div>
+      </div>
+    </div>
+    <div class="dgrid">
+      <div class="slots" id="slots"></div>
+      <aside class="dsum">
+        <div class="k">Your satellite</div>
+        <div class="srow"><span>Mass</span><b id="sMass"></b></div>
+        <div class="srow"><span>Cost</span><b id="sCost"></b></div>
+        <div class="bar"><div id="sCostBar"></div></div>
+        <div class="srow"><span>Battery in Earth's shadow</span><b id="sNight"></b></div>
+        <div class="srow"><span>Spare power in sunlight</span><b id="sSpare"></b></div>
+        <div class="srow"><span>Photos sent per ground pass</span><b id="sPass"></b></div>
+        <ul class="checks" id="sChecks"></ul>
+        <button type="button" class="primary" id="btnApprove">Approve design</button>
+        <p class="tiny">Engineers always trade mass, power, money and data. There is no perfect design within this budget.</p>
+      </aside>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="poll" hidden>
   <div class="card">
     <div class="eyebrow">Pad 1 · Guiana Space Centre, Kourou</div>
     <h2>Go/No-Go poll</h2>
@@ -100,13 +132,14 @@
       <div class="dbbox good"><div class="k">What your choices did</div><ul id="dbGood"></ul></div>
       <div class="dbbox warn"><div class="k">To do better</div><ul id="dbBad"></ul></div>
     </div>
-    <div class="row"><button type="button" class="primary" id="btnRetry">Fly again</button></div>
+    <div class="row"><button type="button" class="primary" id="btnRetry">Fly again</button><button type="button" class="primary ghost" id="btnRedesign">Redesign the satellite</button></div>
   </div>
 </div>
 
 <script src="js/vendor/three.min.js"></script>
 <script src="js/vendor/OrbitControls.js"></script>
 <script src="js/physics.js"></script>
+<script src="js/mission.js"></script>
 <script src="js/lines.js"></script>
 <script src="js/ascent.js"></script>
 <script src="js/cockpit.js"></script>

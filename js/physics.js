@@ -26,9 +26,12 @@
   function create(opts) {
     opts = opts || {};
     const payload = opts.payload != null ? opts.payload : 150;
-    const vPad = OMEGA * R * Math.cos(SITE_LAT * Math.PI / 180); // Earth spin helps
+    // launch heading: 90 = due east (Earth's spin helps most), 0 = due north (polar orbit, no help)
+    const az = opts.azimuth != null ? opts.azimuth : 90;
+    const spin = Math.sin(az * Math.PI / 180);
+    const vPad = OMEGA * R * Math.cos(SITE_LAT * Math.PI / 180) * spin;
     return {
-      t: 0, x: 0, y: R, vx: vPad, vy: 0,
+      t: 0, x: 0, y: R, vx: vPad, vy: 0, spin: spin,
       stage: 1, prop1: ROCKET.s1.prop, prop2: ROCKET.s2.prop,
       fairing: true, payload: payload, released: false,
       throttle: 0, pitchCmd: 0, pitch: 0,   // pitch: degrees from straight up, toward downrange
@@ -47,7 +50,7 @@
   function altitude(s) { return radius(s) - R; }
   function speed(s) { return Math.hypot(s.vx, s.vy); }
 
-  function airVel(s) { return [OMEGA * s.y * Math.cos(SITE_LAT * Math.PI / 180), -OMEGA * s.x * Math.cos(SITE_LAT * Math.PI / 180)]; }
+  function airVel(s) { const k = OMEGA * Math.cos(SITE_LAT * Math.PI / 180) * (s.spin == null ? 1 : s.spin); return [k * s.y, -k * s.x]; }
 
   function engine(s) {
     if (s.throttle <= 0) return { T: 0, mdot: 0 };

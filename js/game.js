@@ -2,7 +2,9 @@
 (function () {
   "use strict";
   const P = window.LaunchPhysics, L = window.LINES, $ = (s) => document.querySelector(s);
-  const MISSION = { name: "EarthWatch-1", payload: 150, target: 500000 };
+  const MD = window.MissionData;
+  const MISSION = { name: MD.MISSION.name, payload: 100, target: MD.MISSION.target };
+  let design = MD.defaultDesign(), designEval = MD.evaluate(design);
   let mode = "cadet";
   const ORBIT_MIN = 160000;
 
@@ -52,8 +54,8 @@
 
   /* ---------- state ---------- */
   let s, game;
-  function reset() {
-    s = P.create({ payload: MISSION.payload });
+  function reset(toDesign) {
+    s = P.create({ payload: MISSION.payload, azimuth: 0 });
     game = {
       phase: "pad", said: {}, warp: 1, armed: false, events: [], stagedAt: null, emptyAt: null,
       fairing: null, seco1: null, orbitAt: null, releasedAt: null, failed: null, maxqThrottled: false, lowestThrottleAtQ: 1, peakQ: 0,
@@ -63,10 +65,50 @@
     setWarp(1);
     $("#debrief").hidden = true; $("#countdown").hidden = true; pit.disabled = false;
     pollReset();
-    $("#poll").hidden = false;
-    say(L.prelaunch);
+    if (toDesign) { $("#poll").hidden = true; $("#design").hidden = false; renderDesign(); say(L.design); }
+    else { $("#design").hidden = true; $("#poll").hidden = false; say(L.prelaunch); }
     updateButtons(); updatePhases();
   }
+
+  /* ---------- mission design ---------- */
+  function renderDesign() {
+    $("#mGoal").textContent = MD.MISSION.goal;
+    $("#mBudget").textContent = "$" + MD.MISSION.budget.toFixed(1) + "M";
+    const wrap = $("#slots"); wrap.innerHTML = "";
+    Object.keys(MD.PARTS).forEach((slot) => {
+      const sec = document.createElement("div"); sec.className = "slot";
+      sec.innerHTML = `<div class="sl">${MD.PARTS[slot].label}</div>`;
+      const opts = document.createElement("div"); opts.className = "opts"; opts.setAttribute("role", "radiogroup"); opts.setAttribute("aria-label", MD.PARTS[slot].label);
+      MD.PARTS[slot].options.forEach((o) => {
+        const b = document.createElement("button"); b.type = "button"; b.className = "opt" + (design[slot] === o.id ? " on" : "");
+        b.setAttribute("role", "radio"); b.setAttribute("aria-checked", design[slot] === o.id);
+        const stats = [o.mass + " kg", "$" + o.cost.toFixed(1) + "M"];
+        if (o.power) stats.push(o.power + " W"); if (o.watts) stats.push("+" + o.watts + " W"); if (o.wh) stats.push(o.wh + " Wh"); if (o.mbps) stats.push(o.mbps + " Mbit/s");
+        b.innerHTML = `<b>${o.name}</b><span class="st">${stats.join(" · ")}</span><small>${o.why}</small>`;
+        b.addEventListener("click", () => { design[slot] = o.id; audio.init(); audio.beep(700, 0.06); renderDesign(); });
+        opts.appendChild(b);
+      });
+      sec.appendChild(opts); wrap.appendChild(sec);
+    });
+    const e = designEval = MD.evaluate(design);
+    $("#sMass").textContent = e.mass + " kg";
+    $("#sCost").textContent = `$${e.cost.toFixed(1)}M / $${MD.MISSION.budget.toFixed(1)}M`;
+    const cb = $("#sCostBar"); cb.style.width = Math.min(100, e.cost / MD.MISSION.budget * 100) + "%"; cb.className = e.cost > MD.MISSION.budget ? "hot" : e.cost > MD.MISSION.budget - 0.4 ? "amber" : "";
+    $("#sNight").textContent = `${Math.round(e.nightWh)} / ${Math.round(e.usableWh)} Wh`;
+    $("#sNight").style.color = e.nightWh > e.usableWh ? "var(--amber)" : "var(--green)";
+    $("#sSpare").textContent = Math.round(e.recharge) + " W";
+    $("#sSpare").style.color = e.recharge < 20 ? "var(--amber)" : "var(--green)";
+    $("#sPass").textContent = "≈ " + Math.floor(e.perPassMB / e.cam.imageMB);
+    $("#sChecks").innerHTML = (e.checks.length ? e.checks : [{ level: "good", text: "Balanced design: power, battery and data all fit." }]).map((c) => `<li class="${c.level}">${c.text}</li>`).join("");
+    $("#btnApprove").disabled = !e.ok;
+  }
+  $("#btnApprove").addEventListener("click", () => {
+    if (!designEval.ok) return;
+    audio.init(); audio.beep(880, 0.1);
+    MISSION.payload = designEval.mass;
+    s = P.create({ payload: MISSION.payload, azimuth: 0 });
+    $("#design").hidden = true; pollReset(); $("#poll").hidden = false; say(L.prelaunch);
+  });
 
   /* ---------- Go/No-Go poll ---------- */
   const poll = {};
@@ -140,7 +182,8 @@
   $("#btnFairing").addEventListener("click", doFairing);
   $("#btnArm").addEventListener("click", doArm);
   $("#btnRelease").addEventListener("click", doRelease);
-  $("#btnRetry").addEventListener("click", reset);
+  $("#btnRetry").addEventListener("click", () => reset(false));
+  $("#btnRedesign").addEventListener("click", () => reset(true));
   window.addEventListener("keydown", (e) => {
     if (e.target.tagName === "INPUT" && (e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown")) return;
     const k = e.key.toLowerCase();
@@ -358,7 +401,7 @@
   /* The single most important thing to do right now. Returns [text, style]. */
   function nextAction(alt, o, gp) {
     const ph = game.phase, thrPct = +thr.value;
-    if (ph === "pad") return ["Run the Go/No-Go poll, then LAUNCH", "calm"];
+    if (ph === "pad") return $("#design").hidden ? ["Run the Go/No-Go poll, then LAUNCH", "calm"] : ["", ""];
     if (ph === "countdown") return mode === "cadet" ? ["Stand by: the engines throttle up at T−3", "calm"] : ["Push the throttle to 100% at T−0: press Z", "calm"];
     if (ph === "ignition" && !s.lifted) return ["Throttle up to lift off: press Z (or W)", "urgent"];
     if (ph === "ascent") {
@@ -420,6 +463,6 @@
     requestAnimationFrame(loop);
   }
   window.__mbe = { get s() { return s; }, get game() { return game; } }; // debug hook for testing
-  reset();
+  reset(true);
   requestAnimationFrame(loop);
 })();

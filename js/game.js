@@ -58,7 +58,7 @@
       phase: "pad", said: {}, warp: 1, armed: false, events: [], stagedAt: null, emptyAt: null,
       fairing: null, seco1: null, orbitAt: null, releasedAt: null, failed: null, maxqThrottled: false, lowestThrottleAtQ: 1, peakQ: 0,
     };
-    Scene.resetTrail();
+    Scene.resetTrail(); Cockpit.resetSwitches(); game.userView = false; game.lastThr = null; setView("launchcam");
     $("#throttle").value = 0; $("#pitch").value = 0;
     setWarp(1);
     $("#debrief").hidden = true; $("#countdown").hidden = true; pit.disabled = false;
@@ -115,18 +115,30 @@
   }
   document.querySelectorAll(".warp button").forEach((b) => b.addEventListener("click", () => setWarp(+b.dataset.w)));
   $("#btnView").addEventListener("click", toggleView);
-  function toggleView() {
-    const v = Scene.getView() === "cockpit" ? "tracking" : "cockpit";
-    Scene.setView(v); document.body.classList.toggle("tracking", v === "tracking");
-    $("#btnView").firstChild.textContent = v === "cockpit" ? "Tracking view " : "Cockpit view ";
+  const VIEWS = ["cockpit", "launchcam", "tracking"], VIEW_NAMES = { cockpit: "Cockpit", launchcam: "Launch camera", tracking: "Tracking" };
+  function setView(v) {
+    Scene.setView(v);
+    document.body.classList.remove("view-cockpit", "view-launchcam", "view-tracking", "tracking");
+    document.body.classList.add("view-" + v); if (v === "tracking") document.body.classList.add("tracking");
+    const next = VIEWS[(VIEWS.indexOf(v) + 1) % VIEWS.length];
+    $("#btnView").firstChild.textContent = VIEW_NAMES[next] + " ";
   }
+  function toggleView() { game.userView = true; setView(VIEWS[(VIEWS.indexOf(Scene.getView()) + 1) % VIEWS.length]); }
+  // click the switches in the 3D cockpit
+  $("#stage").addEventListener("click", (e) => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const hit = Scene.pick(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+    if (hit === "stage") doStage(); else if (hit === "fairing") doFairing(); else if (hit === "arm") doArm(); else if (hit === "release") doRelease();
+    else if (hit === "throttle") Cockpit.reach("throttle", 1);
+  });
+  function doArm() { if (game.phase !== "orbit" || game.armed || s.fairing) return; game.armed = true; audio.beep(520); Cockpit.reach("arm", 0.9); Cockpit.flip("arm"); updateButtons(); }
   $("#btnVoice").addEventListener("click", (e) => {
     voiceOn = !voiceOn; e.currentTarget.setAttribute("aria-pressed", voiceOn); e.currentTarget.textContent = voiceOn ? "Voice on" : "Voice off";
     if (!voiceOn) try { speechSynthesis.cancel(); } catch (x) {}
   });
   $("#btnStage").addEventListener("click", doStage);
   $("#btnFairing").addEventListener("click", doFairing);
-  $("#btnArm").addEventListener("click", () => { if (game.phase !== "orbit") return; game.armed = true; audio.beep(520); updateButtons(); });
+  $("#btnArm").addEventListener("click", doArm);
   $("#btnRelease").addEventListener("click", doRelease);
   $("#btnRetry").addEventListener("click", reset);
   window.addEventListener("keydown", (e) => {
@@ -138,27 +150,27 @@
     else if (k === "a" || k === "arrowleft") { pit.value = Math.max(0, +pit.value - 2); }
     else if (k === " ") { e.preventDefault(); doStage(); }
     else if (k === "f") doFairing();
-    else if (k === "r") { if (game.phase === "orbit" && !game.armed) { game.armed = true; updateButtons(); } else doRelease(); }
+    else if (k === "r") { if (game.phase === "orbit" && !game.armed) doArm(); else doRelease(); }
     else if (k === "v") toggleView();
     else return;
   });
 
   function doStage() {
     if (s.stage !== 1 || game.phase === "pad" || game.phase === "ignition" && !s.lifted) return;
-    P.stageSep(s); game.stagedAt = s.t; audio.bang(); audio.beep(440, 0.3);
+    P.stageSep(s); game.stagedAt = s.t; audio.bang(); audio.beep(440, 0.3); Cockpit.reach("stage", 0.9); Cockpit.flip("stage");
     log(`Stage separation at T+${fmtT(s.t)}`);
     say(L.staged); updateButtons();
   }
   function doFairing() {
     if (!s.fairing || !s.lifted) return;
-    const r = P.dropFairing(s); game.fairing = { t: s.t, alt: P.altitude(s), result: r };
+    const r = P.dropFairing(s); game.fairing = { t: s.t, alt: P.altitude(s), result: r }; Cockpit.reach("fairing", 0.9); Cockpit.flip("fairing");
     audio.beep(990, 0.2);
     if (r !== "ok") { fail("fairing"); return; }
     say(L.fairingDone); updateButtons();
   }
   function doRelease() {
     if (game.phase !== "orbit" || !game.armed || s.fairing) return;
-    s.released = true; game.releasedAt = s.t; game.phase = "released"; audio.beep(1200, 0.4);
+    s.released = true; game.releasedAt = s.t; game.phase = "released"; audio.beep(1200, 0.4); Cockpit.reach("release", 1.2); Cockpit.flip("release");
     say(L.release); updatePhases(); updateButtons();
     setTimeout(debrief, 2600);
   }
@@ -171,6 +183,10 @@
     b("#btnFairing", fairOK, fairOK && P.altitude(s) > 110000 && s.q < P.ROCKET.fairingSafeQ);
     b("#btnArm", game.phase === "orbit" && !game.armed && !s.fairing, game.phase === "orbit" && !game.armed && !s.fairing);
     b("#btnRelease", game.phase === "orbit" && game.armed, game.phase === "orbit" && game.armed);
+    Cockpit.setSwitch("stage", flying && s.stage === 1 && s.prop1 <= 0 ? "ready" : "off");
+    Cockpit.setSwitch("fairing", fairOK && P.altitude(s) > 110000 && s.q < P.ROCKET.fairingSafeQ ? "ready" : "off");
+    Cockpit.setSwitch("arm", game.phase === "orbit" && !game.armed && !s.fairing ? "ready" : "off");
+    Cockpit.setSwitch("release", game.phase === "orbit" && game.armed ? "ready" : "off");
   }
 
   /* ---------- phases ---------- */
@@ -326,6 +342,13 @@
     const canFast = s.throttle === 0 && alt > 100000;
     document.querySelectorAll(".warp button").forEach((b) => { const w = +b.dataset.w; b.disabled = w > 4 && !canFast; });
     if (game.warp > 4 && !canFast) setWarp(4);
+    Cockpit.setData({
+      alt: Math.max(0, alt) / 1000, speed: v / 1000, q: s.q / 1000, qLimit: P.ROCKET.maxQ / 1000,
+      pitch: s.pitch, target: gp, clock: clock, phase: ({ pad: "Go/No-Go", countdown: "Countdown", ignition: "Ignition", ascent: "Ascent", coast: "Coast", circ: "Circularize", orbit: "In orbit", released: "Released", failed: "Mission lost" })[game.phase] || "",
+      f1: s.stage === 1 ? s.prop1 / P.ROCKET.s1.prop : 0, f2: s.prop2 / P.ROCKET.s2.prop,
+      orbit: (o.apo > 0 && !o.escape ? Math.round(o.apo / 1000) : "—") + " / " + (o.peri > 0 && !o.escape ? Math.round(o.peri / 1000) : "—") + " km",
+      throttle: s.throttle,
+    });
   }
   const R_DISPLAY = 6000000;
 
@@ -337,6 +360,13 @@
     if (mode === "cadet" && game.phase !== "pad" && game.phase !== "countdown") {
       const auto = (game.phase === "coast" || game.phase === "circ" || game.phase === "orbit" || game.phase === "released") ? 90 : P.guidancePitch(P.altitude(s));
       pit.value = Math.round(auto);
+    }
+    // the gloved hand follows the controls you touch
+    if (+thr.value !== game.lastThr) { if (game.lastThr != null) Cockpit.reach("throttle", 1.2); game.lastThr = +thr.value; }
+    // launch camera for the countdown and liftoff, then into the cockpit before leaving the thick air
+    if (!game.userView) {
+      const want = (game.phase === "countdown" || game.phase === "ignition" || (game.phase === "ascent" && P.altitude(s) < 2500)) ? "launchcam" : "cockpit";
+      if (Scene.getView() !== want && Scene.getView() !== "tracking") setView(want);
     }
     const flying = game.phase !== "pad" && game.phase !== "countdown" && game.phase !== "failed" && game.phase !== "released";
     if (flying) {

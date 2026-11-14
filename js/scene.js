@@ -35,12 +35,13 @@
     renderer.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(renderer.domElement);
     if (window.Ascent) Ascent.init(renderer);
+    if (window.Cockpit) Cockpit.init();
     const haze = document.createElement("div");
     haze.style.cssText = "position:absolute;inset:0;pointer-events:none;background:#6f95c4;opacity:0";
     container.appendChild(haze);
     const SWITCH = 26000;
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(55, container.clientWidth / container.clientHeight, 1e-7, 2000);
+    const camera = new THREE.PerspectiveCamera(60, container.clientWidth / container.clientHeight, 1e-7, 2000);
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true; controls.enablePan = false; controls.minDistance = 1.05; controls.maxDistance = 30;
     controls.enabled = false;
@@ -206,24 +207,34 @@
     };
     S.resetTrail = function () { tn = 0; lastTrail = null; tg.setDrawRange(0, 0); if (window.Ascent) Ascent.reset(); };
 
+    S.pick = function (ndcX, ndcY) { return view === "cockpit" && window.Cockpit ? Cockpit.pick(ndcX, ndcY) : null; };
+
     S.render = function (dt) {
-      const alt = st.alt;
-      haze.style.opacity = view === "cockpit" ? Math.max(0, 1 - Math.abs(alt - SWITCH) / 1800) * 0.9 : 0;
-      if (view === "cockpit" && alt < SWITCH && window.Ascent) {
-        Ascent.render(renderer, st, container.clientWidth / container.clientHeight, dt || 0.016);
-        return;
+      const alt = st.alt, aspect = container.clientWidth / container.clientHeight;
+      dt = dt || 0.016;
+      const outside = view !== "tracking";
+      haze.style.opacity = outside ? Math.max(0, 1 - Math.abs(alt - SWITCH) / 1800) * 0.9 : 0;
+      if (outside && alt < SWITCH && window.Ascent) {
+        Ascent.render(renderer, st, aspect, dt, view);
+      } else {
+        renderEarth(outside);
       }
+      if (view === "cockpit" && window.Cockpit) Cockpit.render(renderer, aspect, dt, st.shake);
+    };
+
+    function renderEarth(outside) {
+      const alt = st.alt;
       // sky colour by altitude
       const k1 = Math.min(1, Math.max(0, alt / 25000)), k2 = Math.min(1, Math.max(0, (alt - 25000) / 50000));
       sky.copy(SKY_LOW).lerp(SKY_MID, k1).lerp(SKY_SPACE, k2);
-      if (view === "cockpit") {
+      if (outside) {
         scene.background = sky;
         if (ring) ring.visible = false;
         starMat.opacity = Math.min(1, Math.max(0, (alt - 30000) / 40000));
         atmoMat.uniforms.fade.value = Math.min(1, Math.max(0, (alt - 70000) / 60000));
         // camera at the rocket, looking downrange and down toward the horizon
         const dip = Math.acos(Math.min(1, 1 / (1 + Math.max(0, alt) / R_M)));
-        const look = -0.06 + dip * 0.9 + 0.26 * Math.min(1, Math.max(0, alt) / 40000);
+        const look = 0.14 + dip * 0.9 + 0.26 * Math.min(1, Math.max(0, alt) / 40000);
         const dir = st.east.clone().multiplyScalar(Math.cos(look)).addScaledVector(st.up, -Math.sin(look)).normalize();
         camera.position.copy(st.pos).addScaledVector(st.up, 30 / R_M);
         if (st.shake > 0) camera.position.add(new THREE.Vector3((Math.random() - 0.5), (Math.random() - 0.5), (Math.random() - 0.5)).multiplyScalar(st.shake * 4e-7));
@@ -248,7 +259,7 @@
       camera.updateProjectionMatrix();
       clouds.rotation.y += 0.00002;
       renderer.render(scene, camera);
-    };
+    }
 
     function resize() {
       camera.aspect = container.clientWidth / container.clientHeight; camera.updateProjectionMatrix();

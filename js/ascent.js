@@ -6,7 +6,8 @@
   "use strict";
   const A = {};
   const COAST_X = 3500;          // metres east of the pad
-  let scene, camera, skyMat, fog, smoke = [], puffTex, smokeTime = 0;
+  let scene, camera, skyMat, fog, smoke = [], puffTex, smokeTime = 0, rocket, plume;
+  const CAM_POS = new THREE.Vector3(-260, 5, 190);
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
 
@@ -101,10 +102,10 @@
     // launch tower beside the rocket (north side)
     const tower = new THREE.Group();
     const red = new THREE.MeshBasicMaterial({ color: 0xa8392c }), white = new THREE.MeshBasicMaterial({ color: 0xd9dde2 }), grey = new THREE.MeshBasicMaterial({ color: 0x4b525c });
-    for (let i = 0; i < 10; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(5, 5, 5), i % 2 ? white : red); b.position.y = 2.5 + i * 5; tower.add(b); }
-    for (let i = 0; i < 4; i++) { const arm = new THREE.Mesh(new THREE.BoxGeometry(1.2, 1.2, 9), grey); arm.position.set(0, 10 + i * 11, 6); tower.add(arm); }
-    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 8, 6), grey); top.position.y = 54; tower.add(top);
-    tower.position.set(26, 0, -20); scene.add(tower);
+    for (let i = 0; i < 6; i++) { const b = new THREE.Mesh(new THREE.BoxGeometry(2.6, 4, 2.6), i % 2 ? white : red); b.position.y = 2 + i * 4; tower.add(b); }
+    for (let i = 0; i < 3; i++) { const arm = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.6, 2.4), grey); arm.position.set(0, 7 + i * 6.5, 2.2); tower.add(arm); }
+    const top = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.15, 5, 6), grey); top.position.y = 26.5; tower.add(top);
+    tower.position.set(0, 0, -4.2); scene.add(tower);
     const pad = new THREE.Mesh(new THREE.BoxGeometry(40, 2, 40), grey); pad.position.y = -0.9; scene.add(pad);
 
     // cloud deck
@@ -118,6 +119,36 @@
       scene.add(sp);
     }
     puffTex = puffTexture("rgba(225,222,215,");
+
+    // the launcher itself (seen from the launch camera)
+    rocket = new THREE.Group();
+    const rWhite = new THREE.MeshBasicMaterial({ color: 0xe8ebef }), rBlack = new THREE.MeshBasicMaterial({ color: 0x1a1d22 }), rShade = new THREE.MeshBasicMaterial({ color: 0xb9bec6 });
+    const s1 = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 13, 24), rWhite); s1.position.y = 7.5; rocket.add(s1);
+    const s1s = new THREE.Mesh(new THREE.CylinderGeometry(0.76, 0.76, 13, 24, 1, true, Math.PI * 0.55, Math.PI * 0.6), rShade); s1s.position.y = 7.5; rocket.add(s1s);
+    const band = new THREE.Mesh(new THREE.CylinderGeometry(0.77, 0.77, 1.1, 24), rBlack); band.position.y = 14.4; rocket.add(band);
+    const s2 = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 3.5, 24), rWhite); s2.position.y = 16.7; rocket.add(s2);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.75, 3.4, 24), rWhite); cap.position.y = 20.1; rocket.add(cap);
+    const win = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.25, 0.1), rBlack); win.position.set(0.55, 19.2, 0.45); win.rotation.y = 0.6; rocket.add(win);
+    for (let i = 0; i < 9; i++) {
+      const a2 = i / 9 * Math.PI * 2, r = i === 8 ? 0 : 0.45;
+      const bell = new THREE.Mesh(new THREE.ConeGeometry(0.16, 0.6, 12, 1, true), rBlack);
+      bell.position.set(Math.cos(a2) * r, 0.7, Math.sin(a2) * r); rocket.add(bell);
+    }
+    for (let i = 0; i < 4; i++) {
+      const leg = new THREE.Mesh(new THREE.BoxGeometry(0.08, 2.4, 0.5), rBlack);
+      leg.position.set(Math.cos(i * Math.PI / 2) * 0.8, 1.6, Math.sin(i * Math.PI / 2) * 0.8); leg.rotation.y = -i * Math.PI / 2; rocket.add(leg);
+    }
+    // exhaust plume
+    plume = new THREE.Group(); rocket.add(plume);
+    const outer = new THREE.Mesh(new THREE.ConeGeometry(1.1, 14, 20, 1, true), new THREE.MeshBasicMaterial({ color: 0xff8a2a, transparent: true, opacity: 0.4, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    outer.rotation.x = Math.PI; outer.position.y = -7; plume.add(outer);
+    const inner = new THREE.Mesh(new THREE.ConeGeometry(0.55, 7, 16, 1, true), new THREE.MeshBasicMaterial({ color: 0xfff4d6, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }));
+    inner.rotation.x = Math.PI; inner.position.y = -3.4; plume.add(inner);
+    const gc = document.createElement("canvas"); gc.width = gc.height = 64; const gx = gc.getContext("2d"), gr = gx.createRadialGradient(32, 32, 0, 32, 32, 32);
+    gr.addColorStop(0, "rgba(255,240,200,1)"); gr.addColorStop(0.3, "rgba(255,170,80,0.6)"); gr.addColorStop(1, "rgba(255,120,40,0)"); gx.fillStyle = gr; gx.fillRect(0, 0, 64, 64);
+    const glowS = new THREE.Sprite(new THREE.SpriteMaterial({ map: new THREE.CanvasTexture(gc), blending: THREE.AdditiveBlending, depthWrite: false, transparent: true }));
+    glowS.scale.setScalar(6); glowS.position.y = -2; plume.add(glowS);
+    scene.add(rocket);
   };
 
   function updateSmoke(dt, flame, alt) {
@@ -142,8 +173,8 @@
 
   A.reset = function () { smoke.forEach((s) => scene.remove(s)); smoke = []; };
 
-  /* st: { alt, ground (downrange metres), shake, flame }, dt seconds */
-  A.render = function (renderer, st, aspect, dt) {
+  /* st: { alt, ground (downrange metres), shake, flame, pitch }, dt seconds, mode: "cockpit" | "launchcam" */
+  A.render = function (renderer, st, aspect, dt, mode) {
     const alt = Math.max(0, st.alt);
     camera.aspect = aspect; camera.updateProjectionMatrix();
     skyMat.uniforms.alt.value = alt;
@@ -151,13 +182,32 @@
     fog.color.setRGB(0.66 - 0.3 * k, 0.78 - 0.25 * k, 0.9 - 0.15 * k);
     fog.near = 6000 + alt * 2; fog.far = 60000 + alt * 22;
     updateSmoke(dt, st.flame, alt);
-    const cx = st.ground, cy = alt + 17;
-    camera.position.set(cx, cy, 0);
-    if (st.shake > 0) camera.position.add(new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, Math.random() - 0.5).multiplyScalar(st.shake * 0.35));
-    A.sky.position.copy(camera.position);
-    // look downrange; tip the view down as we climb so the ground stays in sight
-    const down = -0.04 + 0.42 * Math.min(1, alt / 20000);
-    camera.lookAt(cx + Math.cos(down) * 1000, cy - Math.sin(down) * 1000, 0);
+    // the rocket
+    rocket.position.set(st.ground, alt, 0);
+    rocket.rotation.z = -(st.pitch || 0) * Math.PI / 180;
+    const f = st.flame || 0;
+    plume.visible = f > 0.02;
+    plume.scale.set(0.8 + f * 0.4 + Math.random() * 0.06, (0.6 + f * 0.8) * (1 + alt / 15000) + Math.random() * 0.08, 0.8 + f * 0.4);
+    if (mode === "launchcam") {
+      rocket.visible = true;
+      const tgt = new THREE.Vector3(st.ground, alt + 10, 0);
+      const dist = CAM_POS.distanceTo(tgt);
+      camera.fov = Math.max(1.2, Math.min(40, 2 * Math.atan(38 / dist) * 180 / Math.PI));
+      camera.position.copy(CAM_POS);
+      if (st.shake > 0) camera.position.add(new THREE.Vector3(Math.random() - 0.5, Math.random() - 0.5, 0).multiplyScalar(st.shake * 0.12));
+      camera.updateProjectionMatrix();
+      A.sky.position.copy(camera.position);
+      camera.lookAt(tgt);
+    } else {
+      rocket.visible = false;
+      camera.fov = 60; camera.updateProjectionMatrix();
+      const cx = st.ground, cy = alt + 19;
+      camera.position.set(cx, cy, 0);
+      A.sky.position.copy(camera.position);
+      // look downrange, tipped down so the horizon sits in the cockpit windows
+      const down = 0.2 + 0.4 * Math.min(1, alt / 20000);
+      camera.lookAt(cx + Math.cos(down) * 1000, cy - Math.sin(down) * 1000, 0);
+    }
     renderer.render(scene, camera);
   };
 

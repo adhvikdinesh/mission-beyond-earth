@@ -16,7 +16,8 @@
   const CONTACT_KM = 2300;
   const STORAGE = 4000;            // MB of onboard memory          // ground-station range at ~500 km altitude, 5° above the horizon
   const SUN_RA = 229.5 * D2R, SUN_DEC = -18.3 * D2R;   // mid-November
-  const GMST0 = 53.2 * D2R;                            // Earth's rotation angle at 00:00 UTC
+  const START_UTC = 6 * 3600;                          // the day starts at 06:00 UTC
+  const GMST0 = 53.2 * D2R + WE * START_UTC;           // Earth's rotation angle at the start
   const SUN = [Math.cos(SUN_DEC) * Math.cos(SUN_RA), Math.cos(SUN_DEC) * Math.sin(SUN_RA), Math.sin(SUN_DEC)];
 
   function gcKm(lat1, lon1, lat2, lon2) {
@@ -55,6 +56,7 @@
       fires: (opts.fires || []).map((f) => ({ lat: f.lat, lon: f.lon, frp: f.frp, day: f.day, seen: false, sent: false, missedNight: false })),
       track: [], log: [], contact: null, sunlit: true, camOn: false, nightMisses: 0, smokeMisses: 0,
     };
+    st.u0 = pickLaunchPhase(st);
     onDone = opts.onDone;
     canvas = document.getElementById("opsMap"); ctx = canvas.getContext("2d");
     dayImg = new Image(); dayImg.src = "assets/textures/earth_day_4k.jpg";
@@ -78,6 +80,27 @@
   O.setSpeed = (v) => { if (st) st.speed = v; };
   O.togglePause = () => { if (st) st.paused = !st.paused; return st && st.paused; };
   O.skip = () => { if (st) { while (st.t < st.end) step(20); } };
+
+  /* Mission planners pick the launch time so the orbit passes over the target region.
+   * Try a range of orbit phases and keep the one whose ground track covers the most target fires. */
+  function pickLaunchPhase(st) {
+    const R0 = window.MissionData ? MissionData.MISSION.region : { latMin: 35.5, latMax: 44.2, lonMin: -9.8, lonMax: 4.5 };
+    const targets = st.fires.filter((f) => f.lat >= R0.latMin && f.lat <= R0.latMax && f.lon >= R0.lonMin && f.lon <= R0.lonMax);
+    const pool = targets.length ? targets : st.fires;
+    const half = st.e.cam.swathKm / 2;
+    let best = 1.2, bestScore = -1;
+    for (let i = 0; i < 36; i++) {
+      st.u0 = i / 36 * Math.PI * 2;
+      const hit = new Set();
+      for (let t = 0; t < 24 * 3600; t += 40) {
+        const p = satState(t);
+        if (p.lat < R0.latMin - 4 || p.lat > R0.latMax + 4) continue;
+        for (let k = 0; k < pool.length; k++) if (!hit.has(k) && gcKm(p.lat, p.lon, pool[k].lat, pool[k].lon) < half && (st.e.cam.night || sunElevationSin(pool[k].lat, pool[k].lon, t) > 0)) hit.add(k);
+      }
+      if (hit.size > bestScore) { bestScore = hit.size; best = st.u0; }
+    }
+    return best;
+  }
 
   function resize() {
     const box = canvas.parentElement.getBoundingClientRect();
@@ -107,7 +130,7 @@
   }
 
   function logEv(text) {
-    const h = Math.floor(st.t / 3600), m = Math.floor(st.t / 60) % 60;
+    const ct = (st.t + START_UTC) % 86400, h = Math.floor(ct / 3600), m = Math.floor(ct / 60) % 60;
     st.log.unshift(`${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")} ${text}`);
     if (st.log.length > 40) st.log.pop();
   }
@@ -131,11 +154,14 @@
       radioW = e.ant.power;
       let budgetMB = e.ant.mbps / 8 * dt;
       while (st.queue.length && budgetMB > 0) {
-        const seg = st.queue[0];
+        // the onboard computer sends picture files that contain fires first
+        let qi = st.queue.findIndex((q) => q.fires.length && !(q === st.seg && st.camOn));
+        if (qi < 0) qi = 0;
+        const seg = st.queue[qi];
         if (seg === st.seg && st.camOn) break;          // still recording this strip
         const take = Math.min(budgetMB, seg.mb);
         seg.mb -= take; budgetMB -= take; st.storageMB -= take;
-        if (seg.mb <= 1e-6) { st.queue.shift(); if (seg === st.seg) st.seg = null; for (const f of seg.fires) { f.sent = true; st.sent++; } }
+        if (seg.mb <= 1e-6) { st.queue.splice(qi, 1); if (seg === st.seg) st.seg = null; for (const f of seg.fires) { f.sent = true; f.sentAt = st.t; st.sent++; } }
       }
     }
     // power: the thermal imager's detector cooler runs all the time unless in safe mode
@@ -153,6 +179,7 @@
       else {
         if (!st.seg) { st.seg = { mb: 0, fires: [] }; st.queue.push(st.seg); }
         st.seg.mb += mb; st.storageMB += mb; st.recording = true; st.fullWarned = false;
+        st.seg.rec = (st.seg.rec || 0) + mb;
       }
     } else st.seg = null;
     // fire detection inside the camera swath
@@ -170,6 +197,7 @@
       if (!st.recording) { st.lostFull++; continue; }
       f.seen = true; f.pingAt = st.t; st.seg.fires.push(f);
     }
+    if (st.seg && st.seg.rec >= e.cam.imageMB) st.seg = null;   // one-minute picture files
     const nowSeen = st.fires.filter((f) => f.seen).length;
     if (nowSeen > (st._lastSeen || 0)) { if (nowSeen - (st._lastSeen || 0) >= 1) logEv(`Spotted ${nowSeen - (st._lastSeen || 0)} fire${nowSeen - (st._lastSeen || 0) > 1 ? "s" : ""}.`); st._lastSeen = nowSeen; }
     st.track.push([p.lat, p.lon]); if (st.track.length > 900) st.track.shift();
@@ -251,7 +279,7 @@
 
   function panel() {
     const $ = (id) => document.getElementById(id), e = st.e;
-    const h = Math.floor(st.t / 3600), m = Math.floor(st.t / 60) % 60;
+    const ct = (st.t + START_UTC) % 86400, h = Math.floor(ct / 3600), m = Math.floor(ct / 60) % 60;
     $("oClock").textContent = `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")} UTC`;
     $("oDay").style.width = (st.t / st.end * 100) + "%";
     $("oSun").textContent = st.sunlit ? "Sunlight" : "Earth's shadow"; $("oSun").className = st.sunlit ? "good" : "dim";
@@ -268,7 +296,7 @@
     cancelAnimationFrame(raf); window.removeEventListener("resize", resize);
     const total = st.fires.length, seen = st.fires.filter((f) => f.seen).length;
     const res = {
-      total, seen, sent: st.sent, waiting: st.fires.filter((f) => f.seen && !f.sent).length, leftMB: Math.round(st.storageMB), lostMB: Math.round(st.lostMB), safeCount: st.safeCount, safeMissed: st.fires.filter((f) => !f.seen && f.missedSafe).length, nightMissed: st.fires.filter((f) => !f.seen && f.missedNight).length,
+      total, seen, sent: st.sent, delayMin: (() => { const d = st.fires.filter((f) => f.sent).map((f) => (f.sentAt - f.pingAt) / 60); return d.length ? Math.round(d.reduce((a, b) => a + b, 0) / d.length) : null; })(), waiting: st.fires.filter((f) => f.seen && !f.sent).length, leftMB: Math.round(st.storageMB), lostMB: Math.round(st.lostMB), safeCount: st.safeCount, safeMissed: st.fires.filter((f) => !f.seen && f.missedSafe).length, nightMissed: st.fires.filter((f) => !f.seen && f.missedNight).length,
       smokeMisses: st.smokeMisses, lostFull: st.lostFull, safeMin: Math.round(st.safeMin), battMinPct: Math.round(st.battMin / st.e.bat.wh * 100),
     };
     setTimeout(() => { document.getElementById("ops").hidden = true; onDone && onDone(res); }, 900);

@@ -355,7 +355,7 @@
 
     if (op) opsLines(op, good, bad);
     const dbo = $("#dbOps"); dbo.hidden = !op;
-    if (op) dbo.innerHTML = [["Fires on the map", op.total], ["Photographed", op.seen], ["Delivered", op.sent], ["Lowest battery", op.battMinPct + "%"]].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
+    if (op) dbo.innerHTML = [["Fires on the map", op.total], ["Photographed", op.seen], ["Delivered", op.sent], ["Avg. delay", op.delayMin != null ? op.delayMin + " min" : "—"]].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
     if (op && op.total) { const share = op.sent / op.total; if (share < 0.1 && stars > 1) stars--; if (share >= 0.35 && stars < 3) stars++; }
     $("#dbEyebrow").textContent = success ? "Mission success" : "Mission lost";
     $("#dbTitle").textContent = success ? (stars === 3 ? "Perfect orbit" : "Satellite in orbit") : "Mission failed";
@@ -383,7 +383,8 @@
     else if (op.safeCount > 0) bad.push(`The battery ran flat ${op.safeCount} times (away from the target, luckily). A bigger battery gives a safety margin.`);
     else good.push(`The battery never dropped below ${op.battMinPct}%, so the camera was always ready.`);
     if (op.waiting > 0) bad.push(`${op.waiting} fire picture${op.waiting > 1 ? "s are" : " is"} still stuck on board (${op.leftMB} MB). The ${e.ant.name} is too slow to send everything during the short ground-station passes.`);
-    else if (op.seen) good.push(`Every picture reached the ground: the ${e.ant.name} kept up with the camera.`);
+    else if (op.seen && op.delayMin != null && op.delayMin > 30) bad.push(`Firefighters waited ${op.delayMin} minutes on average for each fire picture. The ${e.ant.name} is slow, so pictures queued up on board${op.leftMB > 300 ? ` (${op.leftMB} MB never came down)` : ""}. X-band sends them in minutes.`);
+    else if (op.seen) good.push(`Fire pictures reached firefighters ${op.delayMin != null && op.delayMin <= 5 ? "within minutes" : `about ${op.delayMin} minutes`} after the satellite saw them: the ${e.ant.name} kept up with the camera.`);
     if (op.lostFull) bad.push(`The memory filled up and ${op.lostFull} fire${op.lostFull > 1 ? "s were" : " was"} never recorded.`);
   }
 
@@ -443,6 +444,7 @@
       if (s.stage === 2 && game.said.apoReady && thrPct > 0) return ["CUT THE ENGINE: press X", "urgent"];
       return ["", ""];
     }
+    if ((ph === "coast" || ph === "circ") && mode === "commander" && Math.abs(s.pitch - gp) > 6) return [`Point along the horizon: steer to ${Math.round(gp)}° (A / D)`, ph === "circ" ? "urgent" : ""];
     if (ph === "coast") return ["Coasting up to the high point: speed up time with 10× or 50×", "calm"];
     if (ph === "circ") {
       if (o.peri >= MISSION.target - 35000 && thrPct > 0) return ["Orbit is round: CUT THE ENGINE (press X)", "urgent"];

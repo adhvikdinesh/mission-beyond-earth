@@ -38,7 +38,7 @@
       ] },
     antenna: {
       label: "Downlink antenna", options: [
-        { id: "sband", name: "S-band antenna", mass: 4, power: 10, cost: 0.3, mbps: 2, why: "2 Mbit/s: sends about 150 MB per ground-station pass." },
+        { id: "sband", name: "S-band antenna", mass: 4, power: 10, cost: 0.3, mbps: 1, why: "1 Mbit/s: sends about 75 MB per ground-station pass." },
         { id: "xband", name: "X-band antenna", mass: 8, power: 25, cost: 0.8, mbps: 50, why: "50 Mbit/s: sends about 3,700 MB per pass, more than the camera records." },
       ] },
   };

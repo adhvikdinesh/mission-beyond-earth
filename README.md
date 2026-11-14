@@ -28,7 +28,7 @@ You are the flight computer of a small launch rocket. Run the Go/No-Go poll, fly
 3. **Operate** it for one day (fast-forwarded): a sun-synchronous orbit over Europe, Earth's shadow, battery and safe mode, onboard memory, and downlink passes over Svalbard, Kiruna and Maspalomas. The debrief links each design choice to what happened.
 
 ## Fire data (NASA FIRMS)
-Operations uses real active-fire detections from NASA FIRMS (VIIRS). Download a Europe CSV from https://firms.modaps.eosdis.nasa.gov/download/ and run `python3 tools/firms_to_json.py fires.csv` to create `data/fires.json`. Without that file the game shows clearly labelled **practice fires** (made-up positions, not real data).
+Operations uses real active-fire detections from NASA FIRMS (VIIRS). Download a Europe CSV from https://firms.modaps.eosdis.nasa.gov/download/ and run `python3 tools/firms_to_json.py fires.csv` to create `data/fires.json`. The game ships with real detections from **NASA FIRMS, VIIRS NOAA-21, Europe, 7 to 14 November 2026** (`data/raw/J2_VIIRS_C2_Europe_7d.csv` → `data/fires.json`). You can also load a fresh FIRMS CSV from the title screen. Note: FIRMS detects heat, so a few points may be industrial heat sources, not wildfires.
 
 ## Credits and data
 - Earth day texture (`earth_day_4k.jpg`): [Solar System Scope](https://www.solarsystemscope.com/textures/), CC BY 4.0, which is based on NASA imagery; taken from the three.js examples (`earth_day_4096.jpg`).

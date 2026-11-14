@@ -37,7 +37,7 @@
     for (let z = 0; z <= size; z += 4) x.lineTo(coastAt(z), z);
     x.lineTo(0, size); x.closePath(); x.fill();
     // forest texture
-    const blobs = detail ? 9000 : 6000;
+    const blobs = (detail ? 9000 : 6000) * (size / 2048) * (size / 2048);
     for (let i = 0; i < blobs; i++) {
       const z = Math.random() * size, lim = coastAt(z), px = Math.random() * lim;
       const r = (detail ? rnd(2, 9) : rnd(1, 5));
@@ -64,10 +64,12 @@
       x.beginPath(); x.moveTo(cx, cx + 250 * m2p); x.lineTo(cx - 2500 * m2p, cx + 3200 * m2p); x.stroke();
       x.beginPath(); x.moveTo(cx - 250 * m2p, cx); x.lineTo(cx - 4000 * m2p, cx - 900 * m2p); x.stroke();
     }
-    const t = new THREE.CanvasTexture(c); t.anisotropy = 8; return t;
+    const t = new THREE.CanvasTexture(c); t.anisotropy = MAXANISO; return t;
   }
 
+  let MAXANISO = 8;
   A.init = function (renderer) {
+    MAXANISO = renderer.capabilities.getMaxAnisotropy();
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(60, 1, 0.5, 2.5e6);
     fog = new THREE.Fog(0xa9c8e6, 8000, 60000); scene.fog = fog;
@@ -96,7 +98,9 @@
     // ground: a wide regional plane and a detailed plane around the pad
     const wide = new THREE.Mesh(new THREE.PlaneGeometry(900000, 900000), new THREE.MeshBasicMaterial({ map: groundTexture(2048, 900000, false) }));
     wide.rotation.x = -Math.PI / 2; wide.position.y = -2; scene.add(wide);
-    const near = new THREE.Mesh(new THREE.PlaneGeometry(20000, 20000), new THREE.MeshBasicMaterial({ map: groundTexture(2048, 20000, true), transparent: false }));
+    const mid = new THREE.Mesh(new THREE.PlaneGeometry(140000, 140000), new THREE.MeshBasicMaterial({ map: groundTexture(4096, 140000, false) }));
+    mid.rotation.x = -Math.PI / 2; mid.position.y = -1; scene.add(mid);
+    const near = new THREE.Mesh(new THREE.PlaneGeometry(12000, 12000), new THREE.MeshBasicMaterial({ map: groundTexture(4096, 12000, true), transparent: false }));
     near.rotation.x = -Math.PI / 2; scene.add(near);
 
     // launch tower beside the rocket (north side)
@@ -122,7 +126,9 @@
 
     // the launcher itself (seen from the launch camera)
     rocket = new THREE.Group();
-    const rWhite = new THREE.MeshBasicMaterial({ color: 0xe8ebef }), rBlack = new THREE.MeshBasicMaterial({ color: 0x1a1d22 }), rShade = new THREE.MeshBasicMaterial({ color: 0xb9bec6 });
+    scene.add(new THREE.HemisphereLight(0xdfeeff, 0x3a4a2a, 0.75));
+    const sunL = new THREE.DirectionalLight(0xfff3e0, 0.95); sunL.position.set(-400, 600, 500); scene.add(sunL);
+    const rWhite = new THREE.MeshStandardMaterial({ color: 0xf0f2f5, roughness: 0.45, metalness: 0.1 }), rBlack = new THREE.MeshStandardMaterial({ color: 0x1a1d22, roughness: 0.6, metalness: 0.3 }), rShade = new THREE.MeshStandardMaterial({ color: 0xd8dce2, roughness: 0.5 });
     const s1 = new THREE.Mesh(new THREE.CylinderGeometry(0.75, 0.75, 13, 24), rWhite); s1.position.y = 7.5; rocket.add(s1);
     const s1s = new THREE.Mesh(new THREE.CylinderGeometry(0.76, 0.76, 13, 24, 1, true, Math.PI * 0.55, Math.PI * 0.6), rShade); s1s.position.y = 7.5; rocket.add(s1s);
     const band = new THREE.Mesh(new THREE.CylinderGeometry(0.77, 0.77, 1.1, 24), rBlack); band.position.y = 14.4; rocket.add(band);

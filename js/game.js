@@ -148,6 +148,8 @@
     else if (k === "s" || k === "arrowdown") { thr.value = Math.max(0, +thr.value - 5); }
     else if (k === "d" || k === "arrowright") { pit.value = Math.min(95, +pit.value + 2); }
     else if (k === "a" || k === "arrowleft") { pit.value = Math.max(0, +pit.value - 2); }
+    else if (k === "x") { thr.value = 0; }
+    else if (k === "z") { thr.value = 100; }
     else if (k === " ") { e.preventDefault(); doStage(); }
     else if (k === "f") doFairing();
     else if (k === "r") { if (game.phase === "orbit" && !game.armed) doArm(); else doRelease(); }
@@ -342,6 +344,7 @@
     const canFast = s.throttle === 0 && alt > 100000;
     document.querySelectorAll(".warp button").forEach((b) => { const w = +b.dataset.w; b.disabled = w > 4 && !canFast; });
     if (game.warp > 4 && !canFast) setWarp(4);
+    setPrompt(nextAction(alt, o, gp));
     Cockpit.setData({
       alt: Math.max(0, alt) / 1000, speed: v / 1000, q: s.q / 1000, qLimit: P.ROCKET.maxQ / 1000,
       pitch: s.pitch, target: gp, clock: clock, phase: ({ pad: "Go/No-Go", countdown: "Countdown", ignition: "Ignition", ascent: "Ascent", coast: "Coast", circ: "Circularize", orbit: "In orbit", released: "Released", failed: "Mission lost" })[game.phase] || "",
@@ -351,6 +354,36 @@
     });
   }
   const R_DISPLAY = 6000000;
+
+  /* The single most important thing to do right now. Returns [text, style]. */
+  function nextAction(alt, o, gp) {
+    const ph = game.phase, thrPct = +thr.value;
+    if (ph === "pad") return ["Run the Go/No-Go poll, then LAUNCH", "calm"];
+    if (ph === "countdown") return mode === "cadet" ? ["Stand by: the engines throttle up at T−3", "calm"] : ["Push the throttle to 100% at T−0: press Z", "calm"];
+    if (ph === "ignition" && !s.lifted) return ["Throttle up to lift off: press Z (or W)", "urgent"];
+    if (ph === "ascent") {
+      if (s.stage === 1 && s.prop1 <= 0) return ["STAGE now: press Space", "urgent"];
+      if (s.stage === 1 && game.said.maxqWarn && !game.said.maxqPassed) return thrPct > 75 ? ["MAX Q: throttle down to 70% (press S)", "urgent"] : ["Hold the throttle near 70% through Max Q", "calm"];
+      if (s.stage === 1 && game.said.maxqPassed && thrPct < 95) return ["Max Q passed: full throttle again (press Z)", ""];
+      if (s.fairing && alt > 110000 && s.q < P.ROCKET.fairingSafeQ) return ["Drop the FAIRING: press F", ""];
+      if (mode === "commander" && Math.abs(s.pitch - gp) > 6) return [`Steer to the green target ${Math.round(gp)}° (A / D)`, ""];
+      if (s.stage === 2 && game.said.apoReady && thrPct > 0) return ["CUT THE ENGINE: press X", "urgent"];
+      return ["", ""];
+    }
+    if (ph === "coast") return ["Coasting up to the high point: speed up time with 10× or 50×", "calm"];
+    if (ph === "circ") {
+      if (o.peri >= MISSION.target - 60000 && thrPct > 0) return ["Orbit is round: CUT THE ENGINE (press X)", "urgent"];
+      if (thrPct === 0) return ["BURN at the top: full throttle (press Z)", "urgent"];
+      return ["Burning: watch ORBIT LOW climb toward 500 km", "calm"];
+    }
+    if (ph === "orbit") return game.armed ? ["RELEASE the satellite: press R", ""] : ["ARM the separation system: press R", ""];
+    return ["", ""];
+  }
+  function setPrompt(a) {
+    const el = $("#prompt");
+    if (!a[0]) { el.hidden = true; return; }
+    el.hidden = false; el.className = "prompt " + a[1]; $("#promptText").textContent = a[0];
+  }
 
   /* ---------- loop ---------- */
   let last = performance.now(), frame = 0;

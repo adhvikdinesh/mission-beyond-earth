@@ -164,3 +164,13 @@ body.view-cockpit .viewbar { bottom: 62px; }
 body.view-cockpit .keyhint { display: block; position: fixed; z-index: 6; left: 50%; transform: translateX(-50%); bottom: 100px; font-family: var(--f-mono); font-size: 11px; color: var(--muted); background: rgba(8,13,22,0.75); padding: 4px 10px; border-radius: 8px; white-space: nowrap; }
 body.view-cockpit .viewbar { bottom: auto; top: 150px; left: auto; right: 16px; transform: none; }
 body.view-cockpit .keyhint { bottom: auto; top: 196px; left: auto; right: 16px; transform: none; }
+
+.prompt { position: fixed; z-index: 7; left: 50%; transform: translateX(-50%); top: 158px; display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 22px; border-radius: 14px; background: rgba(26,18,4,0.88); border: 2px solid var(--amber); box-shadow: 0 0 30px rgba(255,179,0,0.35); animation: pulse 1.4s ease-in-out infinite; pointer-events: none; text-align: center; max-width: calc(100% - 32px); }
+.prompt[hidden] { display: none; }
+.prompt span { font-family: var(--f-mono); font-size: 10px; letter-spacing: 3px; color: var(--amber); }
+.prompt b { font-family: var(--f-display); font-size: 26px; letter-spacing: 1px; color: #fff; }
+.prompt.urgent { border-color: var(--red); background: rgba(40,6,6,0.9); box-shadow: 0 0 30px rgba(255,77,77,0.45); }
+.prompt.urgent span { color: var(--red); }
+.prompt.calm { border-color: var(--cyan); animation: none; box-shadow: none; background: rgba(4,18,26,0.85); }
+.prompt.calm span { color: var(--cyan); }

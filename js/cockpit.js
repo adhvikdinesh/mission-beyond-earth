@@ -12,6 +12,36 @@
   const tmp = new THREE.Vector3();
   const SHOULDER = new THREE.Vector3(0.42, -0.62, 0.15);
 
+  /* Procedural panel texture: subtle grain, seams, screws and printed markings. */
+  function panelTexture(base, seams, marks) {
+    const c = document.createElement("canvas"); c.width = c.height = 512; const x = c.getContext("2d");
+    x.fillStyle = base; x.fillRect(0, 0, 512, 512);
+    const img = x.getImageData(0, 0, 512, 512), d = img.data;
+    for (let i = 0; i < d.length; i += 4) { const n = (Math.random() - 0.5) * 14; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+    x.putImageData(img, 0, 0);
+    if (seams) {
+      x.strokeStyle = "rgba(0,0,0,0.55)"; x.lineWidth = 2;
+      for (let i = 1; i < 4; i++) { x.beginPath(); x.moveTo(i * 128, 0); x.lineTo(i * 128, 512); x.stroke(); x.beginPath(); x.moveTo(0, i * 170); x.lineTo(512, i * 170); x.stroke(); }
+      x.strokeStyle = "rgba(255,255,255,0.06)"; x.lineWidth = 1;
+      for (let i = 1; i < 4; i++) { x.beginPath(); x.moveTo(i * 128 + 2, 0); x.lineTo(i * 128 + 2, 512); x.stroke(); }
+      for (let i = 0; i < 4; i++) for (let j = 0; j < 3; j++) for (const [ox, oy] of [[10, 10], [118, 10], [10, 160], [118, 160]]) {
+        const sx = i * 128 + ox, sy = j * 170 + oy;
+        x.fillStyle = "#6a717b"; x.beginPath(); x.arc(sx, sy, 4, 0, Math.PI * 2); x.fill();
+        x.strokeStyle = "#2a2e34"; x.beginPath(); x.moveTo(sx - 3, sy); x.lineTo(sx + 3, sy); x.stroke();
+      }
+    }
+    if (marks) {
+      x.fillStyle = "rgba(220,228,236,0.55)"; x.font = "bold 13px JetBrains Mono, monospace";
+      ["PWR BUS A", "AVIONICS", "CABIN PRESS", "O2 FLOW", "COMM 1", "GNC"].forEach((t, i) => x.fillText(t, 20 + (i % 3) * 165, 60 + Math.floor(i / 3) * 210));
+      x.strokeStyle = "rgba(255,179,0,0.5)"; x.lineWidth = 2; x.strokeRect(14, 470, 484, 30);
+    }
+    const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = 8; return t;
+  }
+  let TEX = null;
+  function texMat(kind, repeat) {
+    const t = TEX[kind].clone(); t.needsUpdate = true; t.repeat.set(repeat[0], repeat[1]);
+    return new THREE.MeshStandardMaterial({ map: t, roughness: kind === "foam" ? 0.98 : 0.75, metalness: kind === "foam" ? 0 : 0.25 });
+  }
   function std(color, rough, metal, emissive) {
     return new THREE.MeshStandardMaterial({ color: color, roughness: rough == null ? 0.7 : rough, metalness: metal || 0.1, emissive: emissive || 0x000000 });
   }
@@ -62,6 +92,7 @@
       const f = new THREE.Group(); f.position.x = -0.03 + i * 0.02; f.rotation.x = -0.35 - (i === 1 ? 0.25 : 0); fingers.add(f);
       const seg = new THREE.Mesh(new THREE.CylinderGeometry(0.0085, 0.009, 0.05, 10), glove); seg.rotation.x = Math.PI / 2; seg.position.z = -0.025; f.add(seg);
       const tip = new THREE.Mesh(new THREE.SphereGeometry(0.0088, 10, 8), glove); tip.position.z = -0.05; f.add(tip);
+      const joint = new THREE.Mesh(new THREE.TorusGeometry(0.0092, 0.0018, 6, 14), dark); joint.position.z = -0.026; f.add(joint);
     }
     hand.userData.fingers = fingers;
     const thumb = new THREE.Group(); thumb.position.set(-0.042, -0.004, -0.012); thumb.rotation.set(0.1, 0.7, 0.2); hand.add(thumb);
@@ -81,13 +112,20 @@
     const glow = new THREE.PointLight(0x7fd8ff, 0.35, 2.2); glow.position.set(0, -0.2, -0.6); scene.add(glow);
     C.sunLight = sun;
 
-    const hull = std(0x2a2f37, 0.85, 0.15), trim = std(0x3a414b, 0.6, 0.35), dark = std(0x14171c, 0.7, 0.2), foam = std(0x50565f, 0.95, 0.0);
+    TEX = { hull: panelTexture("#3a4049", true, false), dark: panelTexture("#1b1f25", true, true), foam: panelTexture("#2e3238", false, false) };
+    const hull = texMat("hull", [2, 1]), trim = std(0x4a525d, 0.45, 0.6), dark = texMat("dark", [2, 1]), foam = texMat("foam", [4, 1]);
     // window frame: top beam, sill, centre pillar, side pillars
     box(3.2, 0.6, 0.12, hull, 0, 0.82, -1.0);
     box(0.05, 0.6, 0.08, trim, 0, 0.24, -1.0);
     box(0.7, 1.4, 0.12, hull, -1.32, 0.1, -1.0); box(0.7, 1.4, 0.12, hull, 1.32, 0.1, -1.0);
     box(0.05, 0.62, 0.06, trim, -0.95, 0.21, -0.97); box(0.05, 0.62, 0.06, trim, 0.95, 0.21, -0.97);
     box(1.95, 0.04, 0.06, trim, 0, 0.53, -0.97); box(1.95, 0.03, 0.06, trim, 0, -0.03, -0.97);
+    // window glass: a faint reflection so it reads as glass
+    const gc = document.createElement("canvas"); gc.width = 256; gc.height = 128; const gx = gc.getContext("2d");
+    const gg = gx.createLinearGradient(0, 0, 256, 128); gg.addColorStop(0, "rgba(255,255,255,0.10)"); gg.addColorStop(0.35, "rgba(255,255,255,0.0)"); gg.addColorStop(0.7, "rgba(180,210,255,0.05)"); gg.addColorStop(1, "rgba(255,255,255,0)");
+    gx.fillStyle = gg; gx.fillRect(0, 0, 256, 128);
+    const glassMat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(gc), transparent: true, depthWrite: false });
+    [-0.475, 0.475].forEach((gx2) => { const gl = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.56), glassMat); gl.position.set(gx2, 0.25, -0.99); scene.add(gl); });
     // bolts around the windows
     const boltM = std(0x6d747e, 0.4, 0.8);
     for (let i = 0; i < 22; i++) { const b = new THREE.Mesh(new THREE.SphereGeometry(0.008, 8, 6), boltM); b.position.set(-0.92 + i * 0.0876, 0.52, -0.935); scene.add(b); }

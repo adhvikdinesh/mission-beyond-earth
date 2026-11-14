@@ -22,6 +22,14 @@ You are the flight computer of a small launch rocket. Run the Go/No-Go poll, fly
 - Max Q: dynamic pressure is calculated live; full throttle through the thick air breaks the rocket.
 - Orbits: apoapsis and periapsis are computed from the rocket's energy and angular momentum. A two-burn ascent (insert, coast, circularize) reaches a 500 km circular orbit.
 
+## The mission: three steps
+1. **Design** EarthWatch-1, a wildfire-watching satellite: camera, solar panels, battery and antenna on a $13.8M budget. Mass feeds the launch.
+2. **Launch** it into a polar orbit from the cockpit.
+3. **Operate** it for one day (fast-forwarded): a sun-synchronous orbit over Europe, Earth's shadow, battery and safe mode, onboard memory, and downlink passes over Svalbard, Kiruna and Maspalomas. The debrief links each design choice to what happened.
+
+## Fire data (NASA FIRMS)
+Operations uses real active-fire detections from NASA FIRMS (VIIRS). Download a Europe CSV from https://firms.modaps.eosdis.nasa.gov/download/ and run `python3 tools/firms_to_json.py fires.csv` to create `data/fires.json`. Without that file the game shows clearly labelled **practice fires** (made-up positions, not real data).
+
 ## Credits and data
 - Earth textures: based on NASA Blue Marble and Earth at Night (Black Marble) imagery, NASA Earth Observatory / Visible Earth.
 - 3D engine: [three.js](https://threejs.org) r128 (MIT licence, bundled in `js/vendor/`).

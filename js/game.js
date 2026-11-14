@@ -182,6 +182,8 @@
   $("#btnFairing").addEventListener("click", doFairing);
   $("#btnArm").addEventListener("click", doArm);
   $("#btnRelease").addEventListener("click", doRelease);
+  document.querySelectorAll("[data-ospeed]").forEach((b) => b.addEventListener("click", () => { Ops.setSpeed(+b.dataset.ospeed); document.querySelectorAll("[data-ospeed]").forEach((x) => x.classList.toggle("on", x === b)); }));
+  $("#oSkip").addEventListener("click", () => Ops.skip());
   $("#btnRetry").addEventListener("click", () => reset(false));
   $("#btnRedesign").addEventListener("click", () => reset(true));
   window.addEventListener("keydown", (e) => {
@@ -217,7 +219,11 @@
     if (game.phase !== "orbit" || !game.armed || s.fairing) return;
     s.released = true; game.releasedAt = s.t; game.phase = "released"; audio.beep(1200, 0.4); Cockpit.reach("release", 1.2); Cockpit.flip("release");
     say(L.release); updatePhases(); updateButtons();
-    setTimeout(debrief, 2600);
+    const o = P.orbit(s), altKm = (o.apo + o.peri) / 2000;
+    Ops.loadFires().then((fd) => setTimeout(() => {
+      say(L.ops);
+      Ops.start({ design: designEval, altKm, fires: fd.fires, label: fd.label, demo: fd.demo, onDone: (res) => { game.ops = res; debrief(); } });
+    }, 2600));
   }
 
   function updateButtons() {
@@ -314,6 +320,7 @@
   const star = (on) => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 6.1 6.6.8-4.9 4.6 1.3 6.6L12 17.3l-5.9 3.3 1.3-6.6-4.9-4.6 6.6-.8z" fill="${on ? "#ffb300" : "none"}" stroke="${on ? "#ffb300" : "#4a5870"}" stroke-width="1.5" stroke-linejoin="round"/></svg>`;
   function debrief() {
     const o = P.orbit(s), good = [], bad = [];
+    const op = game.phase === "released" ? game.ops : null;
     const success = game.phase === "released";
     let stars = 0;
     const tgt = MISSION.target / 1000, apo = o.escape ? Infinity : o.apo / 1000, peri = o.peri / 1000;
@@ -343,6 +350,10 @@
     if (success && fuel2 > 0) good.push(`${fuel2} kg of fuel left in stage 2: spare fuel for later orbit corrections.`);
     if (success && fuel2 <= 0) bad.push("Stage 2 ran completely dry. Following the green pitch marker saves fuel.");
 
+    if (op) opsLines(op, good, bad);
+    const dbo = $("#dbOps"); dbo.hidden = !op;
+    if (op) dbo.innerHTML = [["Fires on the map", op.total], ["Photographed", op.seen], ["Delivered", op.sent], ["Lowest battery", op.battMinPct + "%"]].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
+    if (op && op.total) { const share = op.sent / op.total; if (share < 0.1 && stars > 1) stars--; if (share >= 0.35 && stars < 3) stars++; }
     $("#dbEyebrow").textContent = success ? "Mission success" : "Mission lost";
     $("#dbTitle").textContent = success ? (stars === 3 ? "Perfect orbit" : "Satellite in orbit") : "Mission failed";
     $("#dbStars").innerHTML = star(stars > 0) + star(stars > 1) + star(stars > 2);
@@ -356,6 +367,21 @@
     $("#dbGood").innerHTML = good.map((x) => `<li>${x}</li>`).join("") || "<li>Try again: every flight teaches something.</li>";
     $("#dbBad").innerHTML = bad.map((x) => `<li>${x}</li>`).join("") || "<li>Nothing. That was a textbook flight.</li>";
     $("#debrief").hidden = false;
+  }
+
+  /* How each design choice shaped the day in orbit. */
+  function opsLines(op, good, bad) {
+    const e = designEval;
+    good.push(`In one day your satellite photographed ${op.seen} of ${op.total} fires and delivered ${op.sent} to firefighters.`);
+    if (e.cam.night) good.push("The thermal camera saw fires at night and through smoke, so the dark half of each orbit still counted.");
+    else if (op.nightMissed) bad.push(`The colour camera missed ${op.nightMissed} fire${op.nightMissed > 1 ? "s" : ""} because it was dark when you flew over. A thermal camera sees heat at night.`);
+    if (!e.cam.night && op.smokeMisses) bad.push(`Smoke hid fires ${op.smokeMisses} time${op.smokeMisses > 1 ? "s" : ""} from the colour camera.`);
+    if (op.safeMin > 0 || op.safeMissed > 0) bad.push(`The battery ran flat ${op.safeCount} time${op.safeCount > 1 ? "s" : ""} and the camera switched off${op.safeMissed ? `, missing ${op.safeMissed} fire${op.safeMissed > 1 ? "s" : ""}` : ""}. ${e.sol.watts < 100 ? "Two solar panels can't feed a thermal camera's cooler: four panels would." : "A bigger battery would last through Earth's shadow."}`);
+    else if (op.safeCount > 0) bad.push(`The battery ran flat ${op.safeCount} times (away from the target, luckily). A bigger battery gives a safety margin.`);
+    else good.push(`The battery never dropped below ${op.battMinPct}%, so the camera was always ready.`);
+    if (op.waiting > 0) bad.push(`${op.waiting} fire picture${op.waiting > 1 ? "s are" : " is"} still stuck on board (${op.leftMB} MB). The ${e.ant.name} is too slow to send everything during the short ground-station passes.`);
+    else if (op.seen) good.push(`Every picture reached the ground: the ${e.ant.name} kept up with the camera.`);
+    if (op.lostFull) bad.push(`The memory filled up and ${op.lostFull} fire${op.lostFull > 1 ? "s were" : " was"} never recorded.`);
   }
 
   /* ---------- HUD ---------- */

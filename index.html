@@ -122,12 +122,37 @@
 <div class="prompt" id="prompt" hidden aria-live="polite"><span>DO THIS NOW</span><b id="promptText"></b></div>
 <div class="countdown" id="countdown" hidden aria-live="assertive"></div>
 
+<div class="ops" id="ops" hidden>
+  <div class="opsMapBox"><canvas id="opsMap" aria-label="Map of Europe with the satellite's ground track, fires and ground stations"></canvas>
+    <div class="opsLegend"><span><i style="background:#ff4d4d"></i>Fire (not seen yet)</span><span><i style="background:#ffd166"></i>Photographed, on board</span><span><i style="background:#00ff88"></i>Delivered to firefighters</span><span><i class="tri"></i>Ground station</span></div>
+    <div class="opsData" id="opsData"></div>
+  </div>
+  <aside class="opsSide">
+    <div class="eyebrow">Operations · Day 1 in orbit</div>
+    <h2 id="oClock">00:00 UTC</h2>
+    <div class="bar"><i id="oDay"></i></div>
+    <dl class="opsStats">
+      <dt>Light</dt><dd id="oSun">Sunlight</dd>
+      <dt>Battery</dt><dd><span id="oBatt">100%</span><div class="bar"><i id="oBattBar"></i></div></dd>
+      <dt>Camera</dt><dd id="oCam">standby</dd>
+      <dt>Storage</dt><dd id="oStore">0 MB</dd>
+      <dt>Radio link</dt><dd id="oLink">no station in view</dd>
+      <dt>Fires spotted</dt><dd id="oSeen">0</dd>
+      <dt>Photos delivered</dt><dd id="oSent">0</dd>
+    </dl>
+    <div class="k">Mission log</div>
+    <ul class="opsLog" id="oLog"></ul>
+    <div class="row"><button type="button" class="primary ghost" data-ospeed="600">Slow</button><button type="button" class="primary ghost on" data-ospeed="1800">Fast</button><button type="button" class="primary ghost" id="oSkip">Skip to end</button></div>
+  </aside>
+</div>
+
 <div class="modal" id="debrief" hidden>
   <div class="card wide">
     <div class="eyebrow" id="dbEyebrow">Mission debrief</div>
     <h2 id="dbTitle">In orbit</h2>
     <div class="stars" id="dbStars" role="img" aria-label="Stars"></div>
     <div class="dbgrid" id="dbStats"></div>
+    <div class="dbgrid" id="dbOps" hidden></div>
     <div class="dbcols">
       <div class="dbbox good"><div class="k">What your choices did</div><ul id="dbGood"></ul></div>
       <div class="dbbox warn"><div class="k">To do better</div><ul id="dbBad"></ul></div>
@@ -144,6 +169,7 @@
 <script src="js/ascent.js"></script>
 <script src="js/cockpit.js"></script>
 <script src="js/scene.js"></script>
+<script src="js/ops.js"></script>
 <script src="js/game.js"></script>
 </body>
 </html>

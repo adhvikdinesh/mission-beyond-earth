@@ -22,6 +22,7 @@ window.LINES = {
   circReady: "We're at the top of the orbit. Burn sideways to raise the low point and make the orbit round.",
   orbit: "Orbit confirmed! We are going around the Earth. Get ready to release the satellite.",
   release: "Satellite released! It's flying on its own now. Great work, Commander.",
+  ops: "Now the real mission starts. Watch one day in orbit: find the fires, survive Earth's shadow, and send the photos home.",
   fail: {
     maxq: "The air pressure was too strong at full throttle. The rocket broke apart at Max Q.",
     ground: "We hit the ground. The rocket turned too far, too early.",

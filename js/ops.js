@@ -42,7 +42,7 @@
     return out;
   }
 
-  let st = null, ctx, canvas, dayImg, nightImg, raf = 0, onDone = null, nightCanvas;
+  let st = null, ctx, canvas, dayImg, nightImg, raf = 0, onDone = null, nightCanvas, nightLayer;
 
   O.start = function (opts) {
     const e = opts.design, alt = opts.altKm;
@@ -168,7 +168,7 @@
       f.tried = true;
       if (Math.random() > e.cam.detect) { st.smokeMisses++; continue; }
       if (!st.recording) { st.lostFull++; continue; }
-      f.seen = true; st.seg.fires.push(f);
+      f.seen = true; f.pingAt = st.t; st.seg.fires.push(f);
     }
     const nowSeen = st.fires.filter((f) => f.seen).length;
     if (nowSeen > (st._lastSeen || 0)) { if (nowSeen - (st._lastSeen || 0) >= 1) logEv(`Spotted ${nowSeen - (st._lastSeen || 0)} fire${nowSeen - (st._lastSeen || 0) > 1 ? "s" : ""}.`); st._lastSeen = nowSeen; }
@@ -188,13 +188,28 @@
       const sx = (MAP.lonMin + 180) / 360 * iw, sy = (90 - MAP.latMax) / 180 * ih;
       const sw = (MAP.lonMax - MAP.lonMin) / 360 * iw, sh = (MAP.latMax - MAP.latMin) / 180 * ih;
       ctx.drawImage(dayImg, sx, sy, sw, sh, 0, 0, W, H);
-      // night side
-      const cell = Math.max(4, Math.round(W / 140));
-      for (let y = 0; y < H; y += cell) for (let x = 0; x < W; x += cell) {
-        const lon = MAP.lonMin + (x + cell / 2) / W * (MAP.lonMax - MAP.lonMin), lat = MAP.latMax - (y + cell / 2) / H * (MAP.latMax - MAP.latMin);
-        const el = sunElevationSin(lat, lon, st.t);
-        if (el < 0.08) { ctx.fillStyle = `rgba(2,6,16,${Math.min(0.72, (0.08 - el) * 5)})`; ctx.fillRect(x, y, cell, cell); }
+      // night side: a smooth shadow mask with city lights showing through
+      const MW = 160, MH = Math.round(MW * H / W);
+      if (!nightCanvas) { nightCanvas = document.createElement("canvas"); nightCanvas.width = MW; nightCanvas.height = MH; nightLayer = document.createElement("canvas"); nightLayer.width = W; nightLayer.height = H; }
+      const mctx = nightCanvas.getContext("2d"), img = mctx.createImageData(MW, MH);
+      for (let y = 0; y < MH; y++) for (let x = 0; x < MW; x++) {
+        const lon = MAP.lonMin + (x + 0.5) / MW * (MAP.lonMax - MAP.lonMin), lat = MAP.latMax - (y + 0.5) / MH * (MAP.latMax - MAP.latMin);
+        const el = sunElevationSin(lat, lon, st.t), a = Math.max(0, Math.min(1, (0.06 - el) * 8));
+        img.data[(y * MW + x) * 4 + 3] = Math.round(a * 255);
       }
+      mctx.putImageData(img, 0, 0);
+      const nl = nightLayer.getContext("2d");
+      nl.globalCompositeOperation = "source-over"; nl.clearRect(0, 0, W, H);
+      nl.fillStyle = "rgba(2,6,18,0.82)"; nl.fillRect(0, 0, W, H);
+      if (nightImg.complete && nightImg.naturalWidth) {
+        const nw = nightImg.naturalWidth, nh = nightImg.naturalHeight;
+        nl.globalCompositeOperation = "lighter"; nl.globalAlpha = 0.9;
+        nl.drawImage(nightImg, (MAP.lonMin + 180) / 360 * nw, (90 - MAP.latMax) / 180 * nh, (MAP.lonMax - MAP.lonMin) / 360 * nw, (MAP.latMax - MAP.latMin) / 180 * nh, 0, 0, W, H);
+        nl.globalAlpha = 1;
+      }
+      nl.globalCompositeOperation = "destination-in"; nl.imageSmoothingEnabled = true; nl.drawImage(nightCanvas, 0, 0, W, H);
+      nl.globalCompositeOperation = "source-over";
+      ctx.drawImage(nightLayer, 0, 0);
     }
     // grid
     ctx.strokeStyle = "rgba(255,255,255,0.08)"; ctx.lineWidth = 1;
@@ -211,6 +226,7 @@
     for (const f of st.fires) {
       const [x, y] = xy(f.lat, f.lon); if (x < 0 || y < 0 || x > W || y > H) continue;
       const r = Math.max(2.5, H / 260);
+      if (f.pingAt != null && st.t - f.pingAt < 900) { const k = (st.t - f.pingAt) / 900; ctx.strokeStyle = `rgba(255,209,102,${1 - k})`; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(x, y, r + k * H / 25, 0, Math.PI * 2); ctx.stroke(); }
       ctx.fillStyle = f.sent ? "#00ff88" : f.seen ? "#ffd166" : "#ff4d4d";
       ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
     }
@@ -226,6 +242,10 @@
     ctx.beginPath(); ctx.ellipse(sx, sy, swPx / Math.cos(p.lat * D2R) * 0.62, swPx, 0, 0, Math.PI * 2); ctx.stroke();
     ctx.fillStyle = "#ffffff"; ctx.shadowColor = "#00d4ff"; ctx.shadowBlur = 12;
     ctx.beginPath(); ctx.arc(sx, sy, Math.max(4, H / 120), 0, Math.PI * 2); ctx.fill(); ctx.shadowBlur = 0;
+    if (sx < 0 || sx > W || sy < 0 || sy > H) {
+      ctx.font = `${Math.round(H / 40)}px JetBrains Mono, monospace`; ctx.textAlign = "center"; ctx.fillStyle = "rgba(230,241,251,0.85)";
+      ctx.fillText("Satellite is over the other side of Earth: fast-forwarding", W / 2, H * 0.12); ctx.textAlign = "left";
+    }
     if (st.contact) { const [gx, gy] = xy(st.contact.lat, st.contact.lon); ctx.strokeStyle = "rgba(0,212,255,0.7)"; ctx.setLineDash([6, 6]); ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(gx, gy); ctx.stroke(); ctx.setLineDash([]); }
   }
 

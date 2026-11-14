@@ -14,6 +14,7 @@ window.LINES = {
   turn: "Start the gravity turn. Follow the green marker: to reach orbit you need to go sideways, not just up.",
   turnAuto: "Gravity turn started. The autopilot is tipping us over: to reach orbit we must go sideways, not just up.",
   stageReady: "Stage 1 is empty. Press STAGE to drop it and light the second stage.",
+  stageNag: "Commander, stage 1 is still attached and empty! We're falling. STAGE now: press Space.",
   staged: "Stage separation confirmed. Second stage ignition!",
   fairingReady: "We're above the thick air. Press FAIRING to drop the nose cone.",
   fairingDone: "Fairing away. Our satellite can see space for the first time.",
@@ -28,6 +29,7 @@ window.LINES = {
     ground: "We hit the ground. The rocket turned too far, too early.",
     reentry: "We fell back into the atmosphere at orbital speed and burned up.",
     suborbital: "We ran out of fuel before reaching orbital speed. The rocket is falling back to Earth.",
+    nostage: "The empty first stage was never dropped. The second stage never lit and we fell back to Earth.",
     fairing: "The fairing came off while the air was still thick. The satellite overheated.",
   },
 };

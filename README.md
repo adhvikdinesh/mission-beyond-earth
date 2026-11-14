@@ -31,7 +31,8 @@ You are the flight computer of a small launch rocket. Run the Go/No-Go poll, fly
 Operations uses real active-fire detections from NASA FIRMS (VIIRS). Download a Europe CSV from https://firms.modaps.eosdis.nasa.gov/download/ and run `python3 tools/firms_to_json.py fires.csv` to create `data/fires.json`. Without that file the game shows clearly labelled **practice fires** (made-up positions, not real data).
 
 ## Credits and data
-- Earth textures: based on NASA Blue Marble and Earth at Night (Black Marble) imagery, NASA Earth Observatory / Visible Earth.
+- Earth day texture (`earth_day_4k.jpg`): [Solar System Scope](https://www.solarsystemscope.com/textures/), CC BY 4.0, which is based on NASA imagery; taken from the three.js examples (`earth_day_4096.jpg`).
+- Earth night lights, clouds and specular textures: from the [three.js examples](https://github.com/mrdoob/three.js/tree/dev/examples/textures/planets) (`earth_lights_2048.png`, `earth_clouds_1024.png`, `earth_specular_2048.jpg`).
 - 3D engine: [three.js](https://threejs.org) r128 (MIT licence, bundled in `js/vendor/`).
 - Fonts: Saira Condensed, IBM Plex Sans and JetBrains Mono (Google Fonts, SIL Open Font Licence).
 

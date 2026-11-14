@@ -68,7 +68,22 @@
   <button type="button" id="btnVoice" aria-pressed="true">Voice on</button>
 </div>
 
-<div class="modal" id="design">
+<div class="modal intro" id="intro">
+  <div class="card wide">
+    <div class="eyebrow">NASA Space Apps 2026 · Space Mission Design Game</div>
+    <h1 class="title">MISSION: <span>BEYOND EARTH</span></h1>
+    <p class="sub">Wildfires are burning across southern Europe. Firefighters need eyes in orbit. You have $13.8 million to build a satellite, launch it, and run it for its first day in space.</p>
+    <ol class="steps3">
+      <li><b>1 · Design</b><span>Pick the camera, solar panels, battery and antenna. Every part costs money, mass and power.</span></li>
+      <li><b>2 · Launch</b><span>Fly the rocket from the cockpit: Max Q, staging, fairing, and two burns to a polar orbit.</span></li>
+      <li><b>3 · Operate</b><span>One day in orbit over Europe: find the fires, survive Earth's shadow, send the pictures home.</span></li>
+    </ol>
+    <p class="note">Nothing to learn first: the Flight Director tells you what to do, and the debrief shows how each choice changed the result.</p>
+    <div class="row"><button type="button" class="primary" id="btnStart">Start the mission</button></div>
+  </div>
+</div>
+
+<div class="modal" id="design" hidden>
   <div class="card xwide">
     <div class="eyebrow">Step 1 · Mission design</div>
     <div class="dhead">
@@ -91,7 +106,7 @@
         <div class="bar"><div id="sCostBar"></div></div>
         <div class="srow"><span>Battery in Earth's shadow</span><b id="sNight"></b></div>
         <div class="srow"><span>Spare power in sunlight</span><b id="sSpare"></b></div>
-        <div class="srow"><span>Photos sent per ground pass</span><b id="sPass"></b></div>
+        <div class="srow"><span>Data: sent per pass / filmed per orbit</span><b id="sPass"></b></div>
         <ul class="checks" id="sChecks"></ul>
         <button type="button" class="primary" id="btnApprove">Approve design</button>
         <p class="tiny">Engineers always trade mass, power, money and data. There is no perfect design within this budget.</p>
@@ -131,6 +146,7 @@
     <div class="eyebrow">Operations · Day 1 in orbit</div>
     <h2 id="oClock">00:00 UTC</h2>
     <div class="bar"><i id="oDay"></i></div>
+    <p class="opsHint">Watch the white dot: that's your satellite. Its orange ring is what the camera sees. Fires turn yellow when photographed and green when the picture reaches a ground station.</p>
     <dl class="opsStats">
       <dt>Light</dt><dd id="oSun">Sunlight</dd>
       <dt>Battery</dt><dd><span id="oBatt">100%</span><div class="bar"><i id="oBattBar"></i></div></dd>

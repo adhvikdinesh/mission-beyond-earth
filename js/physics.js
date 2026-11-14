@@ -126,7 +126,8 @@
       if (s.lifted && s.status === "pad") s.status = "flying";
 
       if (s.q > s.maxQSeen) s.maxQSeen = s.q;
-      if (s.q > ROCKET.maxQ) { s.status = "broken"; s.reason = (s.stage === 2 && speed(s) > 3000) ? "reentry" : "maxq"; return s; }
+      if (s.q > ROCKET.maxQ) { s.status = "broken"; const falling = (s.x * s.vx + s.y * s.vy) < 0;
+        s.reason = falling ? "reentry" : (s.stage === 2 && speed(s) > 3000) ? "reentry" : "maxq"; return s; }
       if (s.fairing === false && s._fairingDroppedQ == null) s._fairingDroppedQ = s.q;
       if (s.lifted && altitude(s) < 0) { s.status = "crashed"; s.reason = "ground"; return s; }
     }
@@ -150,6 +151,17 @@
     return Math.min(90, 90 * Math.pow((h - 0.5) / 180, 0.5));
   }
 
-  const api = { GM, R, G0, ROCKET, create, step, mass, altitude, speed, orbit, circularSpeed, stageSep, dropFairing, guidancePitch, engine };
+  /* Full guidance: stage 1 follows the altitude profile; stage 2 steers so the climb rate
+   * shrinks smoothly as the rocket nears the target height, like a real upper stage. */
+  function vertSpeed(s) { return (s.x * s.vx + s.y * s.vy) / radius(s); }
+  function guidance(s, targetM) {
+    if (s.stage === 1) return guidancePitch(altitude(s));
+    const vrTarget = Math.max(0, ((targetM || 500000) - 10000 - altitude(s)) / 200);
+    return Math.max(20, Math.min(90, 90 - 0.05 * (vrTarget - vertSpeed(s))));
+  }
+  /* Circularization burn: point along the horizon, nudged down if still climbing. */
+  function circPitch(s) { return Math.max(75, Math.min(95, 90 + 0.1 * vertSpeed(s))); }
+
+  const api = { GM, R, G0, ROCKET, create, step, mass, altitude, speed, orbit, circularSpeed, stageSep, dropFairing, guidancePitch, guidance, circPitch, vertSpeed, engine };
   if (typeof module !== "undefined" && module.exports) module.exports = api; else root.LaunchPhysics = api;
 })(typeof window !== "undefined" ? window : globalThis);

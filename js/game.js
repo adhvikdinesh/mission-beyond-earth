@@ -98,7 +98,8 @@
     $("#sNight").style.color = e.nightWh > e.usableWh ? "var(--amber)" : "var(--green)";
     $("#sSpare").textContent = Math.round(e.recharge) + " W";
     $("#sSpare").style.color = e.recharge < 20 ? "var(--amber)" : "var(--green)";
-    $("#sPass").textContent = "≈ " + Math.floor(e.perPassMB / e.cam.imageMB);
+    $("#sPass").textContent = `${Math.round(e.perPassMB)} / ${e.recordMB} MB`;
+    $("#sPass").style.color = e.perPassMB < e.recordMB ? "var(--amber)" : "var(--green)";
     $("#sChecks").innerHTML = (e.checks.length ? e.checks : [{ level: "good", text: "Balanced design: power, battery and data all fit." }]).map((c) => `<li class="${c.level}">${c.text}</li>`).join("");
     $("#btnApprove").disabled = !e.ok;
   }
@@ -259,7 +260,7 @@
       li.classList.toggle("done", i < idx); li.classList.toggle("now", i === idx);
     });
   }
-  function once(key, text, slow) { if (game.said[key]) return false; game.said[key] = true; say(text); if (slow && game.warp > 4) setWarp(1); audio.beep(760); return true; }
+  function once(key, text, slow) { if (game.said[key]) return false; game.said[key] = true; say(text); if (slow && game.warp > 1) setWarp(1); audio.beep(760); return true; }
   function log(t) { game.events.push(t); }
 
   function fail(reason) {
@@ -291,17 +292,19 @@
       if (s.stage === 2 && s.throttle > 0 && o.apo >= MISSION.target - 5000 && o.peri < ORBIT_MIN) once("apoReady", L.apoReady, true);
       if (s.stage === 2 && s.throttle === 0 && game.said.apoReady && alt > 100000) {
         game.phase = "coast"; game.seco1 = { t: s.t, apo: o.apo, peri: o.peri }; log(`Engine cut-off, apoapsis ${Math.round(o.apo / 1000)} km`);
-        say(L.coast);
+        say(L.coast); return;
       }
       if (s.stage === 2 && s.prop2 <= 0) noFuelCheck(o, alt);
       if (o.peri >= ORBIT_MIN && (s.throttle === 0 || s.prop2 <= 0) && !game.said.orbit) toOrbit(o);
       const vUp = (s.x * s.vx + s.y * s.vy) / Math.hypot(s.x, s.y);
       if (s.stage === 2 && alt < 70000 && vUp < 0 && o.peri < ORBIT_MIN) fail("suborbital");
+      if (s.stage === 1 && s.prop1 <= 0 && alt < 90000 && vUp < 0) fail("nostage");
+      if (s.stage === 1 && s.prop1 <= 0 && game.emptyAt != null && s.t - game.emptyAt > 20 && !game.said.stageNag) once("stageNag", L.stageNag, true);
       return;
     }
     if (game.phase === "coast" || game.phase === "circ") {
       const vr = (s.x * s.vx + s.y * s.vy) / Math.hypot(s.x, s.y);
-      if (game.phase === "coast" && vr < 120 && alt > 100000) { game.phase = "circ"; once("circReady", L.circReady, true); setWarp(1); }
+      if (game.phase === "coast" && vr < 30 && alt > 100000) { game.phase = "circ"; once("circReady", L.circReady, true); setWarp(1); }
       if (o.peri >= ORBIT_MIN && s.throttle === 0 && (o.peri > MISSION.target - 80000 || s.prop2 <= 0 || vr < -150)) toOrbit(o);
       if (o.peri >= MISSION.target - 40000 && s.throttle > 0) { /* nearly round: let the player cut */ }
       if (s.prop2 <= 0 && o.peri < ORBIT_MIN && alt < 100000) fail("suborbital");
@@ -329,13 +332,13 @@
       stars = 1;
       const roundness = Math.abs(apo - peri), err = Math.max(Math.abs(apo - tgt), Math.abs(peri - tgt));
       if (peri > tgt - 100) stars = 2;
-      if (err < 30 && fuel2 >= 20) stars = 3;
+      if (err < 45 && fuel2 >= 20) stars = 3;
       good.push(`You reached orbit (${Math.round(peri)} × ${Math.round(apo)} km), so the satellite will stay up without falling back.`);
       if (roundness < 60) good.push("Your orbit is almost round, because you burned sideways at the highest point.");
       else bad.push(`Your orbit is stretched (${Math.round(roundness)} km between high and low point). Burning longer at the top would make it rounder.`);
-      if (err >= 30) bad.push(`The target was ${tgt} km. Cut the engine when the high point reaches it, then circularize there.`);
+      if (err >= 45) bad.push(`The target was ${tgt} km. Cut the engine when the high point reaches it, then circularize there.`);
     } else {
-      const why = { maxq: "full throttle through Max Q put too much air pressure on the rocket", ground: "the rocket turned sideways too early and lost height", reentry: "the orbit's low point was inside the atmosphere, so the satellite fell back", suborbital: "the rocket ran out of fuel before reaching orbital speed (about 7.6 km/s)", fairing: "the fairing came off while the air was still thick" };
+      const why = { maxq: "full throttle through Max Q put too much air pressure on the rocket", ground: "the rocket turned sideways too early and lost height", reentry: "the orbit's low point was inside the atmosphere, so the satellite fell back", suborbital: "the rocket ran out of fuel before reaching orbital speed (about 7.6 km/s)", fairing: "the fairing came off while the air was still thick", nostage: "the empty first stage was never dropped, so the second stage never lit and the rocket fell back" };
       bad.push(`The mission failed because ${why[game.failed] || "something went wrong"}.`);
     }
     if (qPeak > 0) {
@@ -403,8 +406,9 @@
     $("#gPeri").textContent = !o.escape && o.peri > -R_DISPLAY ? (o.peri > 0 ? Math.round(o.peri / 1000) : "below ground") : "—";
     $("#thrVal").textContent = Math.round(s.throttle * 100) + "%";
     $("#pitchVal").textContent = Math.round(s.pitch) + "°" + (mode === "cadet" ? " AUTO" : "");
-    let gp = P.guidancePitch(alt);
-    if (game.phase === "coast" || game.phase === "circ" || game.phase === "orbit") gp = 90;
+    let gp = P.guidance(s, MISSION.target);
+    if (game.phase === "coast" || game.phase === "orbit") gp = 90;
+    if (game.phase === "circ") gp = P.circPitch(s);
     $("#pitchTarget").textContent = Math.round(gp) + "°";
     $("#pitchMark").style.left = `calc(${gp / 95 * 100}% )`;
     const clock = game.phase === "pad" ? "T−00:10" : game.phase === "countdown" ? "T−00:" + String(Math.max(0, game.count)).padStart(2, "0") : game.phase === "ignition" && !s.lifted ? "T−00:00" : "T+" + fmtT(s.t);
@@ -427,7 +431,7 @@
   /* The single most important thing to do right now. Returns [text, style]. */
   function nextAction(alt, o, gp) {
     const ph = game.phase, thrPct = +thr.value;
-    if (ph === "pad") return $("#design").hidden ? ["Run the Go/No-Go poll, then LAUNCH", "calm"] : ["", ""];
+    if (ph === "pad") return $("#design").hidden && $("#intro").hidden ? ["Run the Go/No-Go poll, then LAUNCH", "calm"] : ["", ""];
     if (ph === "countdown") return mode === "cadet" ? ["Stand by: the engines throttle up at T−3", "calm"] : ["Push the throttle to 100% at T−0: press Z", "calm"];
     if (ph === "ignition" && !s.lifted) return ["Throttle up to lift off: press Z (or W)", "urgent"];
     if (ph === "ascent") {
@@ -441,7 +445,7 @@
     }
     if (ph === "coast") return ["Coasting up to the high point: speed up time with 10× or 50×", "calm"];
     if (ph === "circ") {
-      if (o.peri >= MISSION.target - 60000 && thrPct > 0) return ["Orbit is round: CUT THE ENGINE (press X)", "urgent"];
+      if (o.peri >= MISSION.target - 35000 && thrPct > 0) return ["Orbit is round: CUT THE ENGINE (press X)", "urgent"];
       if (thrPct === 0) return ["BURN at the top: full throttle (press Z)", "urgent"];
       return ["Burning: watch ORBIT LOW climb toward 500 km", "calm"];
     }
@@ -460,7 +464,7 @@
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
     if (game.phase === "countdown") countdown(now);
     if (mode === "cadet" && game.phase !== "pad" && game.phase !== "countdown") {
-      const auto = (game.phase === "coast" || game.phase === "circ" || game.phase === "orbit" || game.phase === "released") ? 90 : P.guidancePitch(P.altitude(s));
+      const auto = game.phase === "circ" ? P.circPitch(s) : (game.phase === "coast" || game.phase === "orbit" || game.phase === "released") ? 90 : P.guidance(s, MISSION.target);
       pit.value = Math.round(auto);
     }
     // the gloved hand follows the controls you touch
@@ -490,5 +494,7 @@
   }
   window.__mbe = { get s() { return s; }, get game() { return game; } }; // debug hook for testing
   reset(true);
+  $("#design").hidden = true; $("#dirLine").textContent = "";
+  $("#btnStart").addEventListener("click", () => { audio.init(); audio.beep(880, 0.1); $("#intro").hidden = true; $("#design").hidden = false; say(L.design); });
   requestAnimationFrame(loop);
 })();

@@ -240,3 +240,4 @@ body.view-cockpit .keyhint { bottom: auto; top: 196px; left: auto; right: 16px; 
 .intro .note{color:#9fb3c8;font-size:14px}
 @media (max-width:720px){.steps3{grid-template-columns:1fr}}
 .opsHint{font-size:13px;line-height:1.45;color:#9fb3c8;margin:4px 0}
+.filebtn{display:inline-flex;align-items:center;cursor:pointer;margin-left:8px}

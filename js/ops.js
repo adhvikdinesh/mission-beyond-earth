@@ -35,6 +35,28 @@
       .then((j) => (fireData = { fires: j.fires, label: j.source, demo: false }))
       .catch(() => (fireData = { fires: practiceFires(), label: "PRACTICE FIRES: made-up positions, not real data. Real NASA FIRMS data not loaded.", demo: true }));
   };
+  /* Load a NASA FIRMS CSV straight in the browser (same rules as tools/firms_to_json.py). */
+  O.loadFirmsCSV = function (text) {
+    const lines = text.trim().split(/\r?\n/), head = lines[0].split(",").map((h) => h.trim().toLowerCase());
+    const ix = (n) => head.indexOf(n), iLat = ix("latitude"), iLon = ix("longitude"), iFrp = ix("frp"), iConf = ix("confidence"), iDN = ix("daynight"), iDate = ix("acq_date");
+    if (iLat < 0 || iLon < 0) throw new Error("Not a FIRMS CSV (no latitude/longitude columns)");
+    const rows = [];
+    for (let i = 1; i < lines.length; i++) {
+      const c = lines[i].split(","), lat = +c[iLat], lon = +c[iLon];
+      if (!(lat >= 24 && lat <= 81 && lon >= -30 && lon <= 40)) continue;
+      const conf = iConf >= 0 ? (c[iConf] || "").trim().toLowerCase() : "";
+      if (conf === "l" || conf === "low") continue;
+      rows.push({ lat, lon, frp: iFrp >= 0 ? +c[iFrp] || 0 : 0, day: iDN < 0 || (c[iDN] || "D").toUpperCase() === "D", date: iDate >= 0 ? c[iDate] : "" });
+    }
+    rows.sort((a, b) => b.frp - a.frp);
+    const seen = new Set(), fires = [];
+    for (const r of rows) { const k = Math.round(r.lat * 10) + ":" + Math.round(r.lon * 10); if (seen.has(k)) continue; seen.add(k); fires.push(r); if (fires.length >= 60) break; }
+    if (!fires.length) throw new Error("No fires inside the Europe map in this file");
+    const dates = fires.map((f) => f.date).filter(Boolean).sort();
+    fireData = { fires, demo: false, label: `NASA FIRMS active fires${dates.length ? ", " + dates[0] + " to " + dates[dates.length - 1] : ""} (${fires.length} strongest, loaded from your file)` };
+    return fires.length;
+  };
+
   function practiceFires() {
     let seed = 7; const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     const spots = [[40.2, -7.6], [42.4, -8.1], [37.4, -5.9], [39.4, -0.9], [41.6, 1.6], [38.2, 23.6], [40.9, 15.2], [43.6, 4.9], [36.8, 10.2], [35.2, -4.8]];

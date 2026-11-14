@@ -497,6 +497,11 @@
   window.__mbe = { get s() { return s; }, get game() { return game; } }; // debug hook for testing
   reset(true);
   $("#design").hidden = true; $("#dirLine").textContent = "";
+  $("#firmsFile").addEventListener("change", (ev) => {
+    const f = ev.target.files[0]; if (!f) return;
+    f.text().then((t) => { try { const n = Ops.loadFirmsCSV(t); $("#firmsNote").textContent = `Loaded ${n} real NASA FIRMS fires from ${f.name}.`; } catch (e) { $("#firmsNote").textContent = "Couldn't read that file: " + e.message; } });
+  });
+  Ops.loadFires().then((fd) => { $("#firmsNote").textContent = fd.demo ? "Fires: practice data (not real). Load a NASA FIRMS CSV (Europe, VIIRS) to use real fires." : "Fires: " + fd.label; });
   $("#btnStart").addEventListener("click", () => { audio.init(); audio.beep(880, 0.1); $("#intro").hidden = true; $("#design").hidden = false; say(L.design); });
   requestAnimationFrame(loop);
 })();

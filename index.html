@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mission: Beyond Earth</title>
+<meta name="description" content="A space mission design game: design a satellite, fly the launch yourself, and see how every choice shapes the mission.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&family=Saira+Condensed:wght@600;700&display=swap">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="stage"></div>
+<div id="windowMask" aria-hidden="true"></div>
+
+<header class="topbar">
+  <div class="brand">MISSION: <span>BEYOND EARTH</span></div>
+  <ol class="phases" id="phases" aria-label="Flight phases">
+    <li data-p="pad">Go/No-Go</li><li data-p="liftoff">Liftoff</li><li data-p="maxq">Max Q</li><li data-p="turn">Gravity turn</li>
+    <li data-p="stage">Staging</li><li data-p="fairing">Fairing</li><li data-p="insert">Insertion</li><li data-p="circ">Circularize</li><li data-p="release">Release</li>
+  </ol>
+  <div class="clock" id="clock">T−00:10</div>
+</header>
+
+<section class="gauges left" aria-label="Flight data">
+  <div class="g"><span>Altitude</span><b id="gAlt">0.0</b><i>km</i></div>
+  <div class="g"><span>Speed</span><b id="gSpd">0.00</b><i>km/s</i><small id="gSpdNeed">orbit needs 7.61</small></div>
+  <div class="g"><span>Air pressure on rocket (Q)</span><b id="gQ">0.0</b><i>kPa</i>
+    <div class="bar"><div id="gQbar"></div><em style="left:100%"></em></div><small>limit 32 kPa</small></div>
+  <div class="g"><span>G-force</span><b id="gG">1.0</b><i>g</i></div>
+</section>
+
+<section class="gauges right" aria-label="Vehicle data">
+  <div class="g"><span>Stage 1 fuel</span><b id="gF1">100</b><i>%</i><div class="bar"><div id="gF1bar" class="amber"></div></div></div>
+  <div class="g"><span>Stage 2 fuel</span><b id="gF2">100</b><i>%</i><div class="bar"><div id="gF2bar" class="amber"></div></div></div>
+  <div class="g"><span>Orbit high point</span><b id="gApo">—</b><i>km</i><small id="gTarget">target 500 km</small></div>
+  <div class="g"><span>Orbit low point</span><b id="gPeri">—</b><i>km</i><small>above 160 km = in orbit</small></div>
+</section>
+
+<section class="console" aria-label="Controls">
+  <div class="director" id="director">
+    <div class="avatar" aria-hidden="true"></div>
+    <div><div class="who">Flight Director</div><p id="dirLine">Loading…</p><p class="note">You are the flight computer: on real rockets, software flies these steps and people monitor them.</p></div>
+  </div>
+  <div class="sticks">
+    <label for="throttle">Throttle <b id="thrVal">0%</b> <kbd>W</kbd>/<kbd>S</kbd></label>
+    <input id="throttle" type="range" min="0" max="100" step="1" value="0">
+    <label for="pitch">Pitch <b id="pitchVal">0°</b> · target <b id="pitchTarget" class="green">0°</b> <kbd>A</kbd>/<kbd>D</kbd></label>
+    <div class="pitchwrap"><input id="pitch" type="range" min="0" max="95" step="1" value="0"><span id="pitchMark" class="mark" aria-hidden="true"></span></div>
+    <div class="hint">0° = straight up · 90° = flat along the horizon</div>
+  </div>
+  <div class="actions">
+    <button type="button" id="btnStage" disabled>STAGE <kbd>Space</kbd></button>
+    <button type="button" id="btnFairing" disabled>FAIRING <kbd>F</kbd></button>
+    <button type="button" id="btnArm" disabled>ARM SEPARATION</button>
+    <button type="button" id="btnRelease" class="wide" disabled>RELEASE SATELLITE <kbd>R</kbd></button>
+  </div>
+</section>
+
+<div class="viewbar">
+  <button type="button" id="btnView">Tracking view <kbd>V</kbd></button>
+  <div class="warp" role="group" aria-label="Time warp">
+    <span>Time</span>
+    <button type="button" data-w="1" class="on">1×</button><button type="button" data-w="4">4×</button><button type="button" data-w="10">10×</button><button type="button" data-w="50">50×</button>
+  </div>
+  <button type="button" id="btnVoice" aria-pressed="true">Voice on</button>
+</div>
+
+<div class="modal" id="poll">
+  <div class="card">
+    <div class="eyebrow">Pad 1 · Guiana Space Centre, Kourou</div>
+    <h2>Go/No-Go poll</h2>
+    <p class="sub">Before every launch, each team confirms it is ready. All must say GO.</p>
+    <div class="pollrows">
+      <div class="prow"><div><b>Weather</b><span id="wxText">Checking…</span></div><button type="button" data-poll="wx">Poll</button></div>
+      <div class="prow"><div><b>Range safety</b><span>Airspace and sea zone clear</span></div><button type="button" data-poll="range">Poll</button></div>
+      <div class="prow"><div><b>Vehicle</b><span>Tanks full, engines healthy</span></div><button type="button" data-poll="veh">Poll</button></div>
+    </div>
+    <div class="cargo">Payload: <b id="cargoName">EarthWatch-1</b> · <b id="cargoMass">150 kg</b> · target orbit <b id="cargoOrbit">500 km</b></div>
+    <button type="button" class="primary" id="btnLaunch" disabled>LAUNCH</button>
+  </div>
+</div>
+
+<div class="modal" id="debrief" hidden>
+  <div class="card wide">
+    <div class="eyebrow" id="dbEyebrow">Mission debrief</div>
+    <h2 id="dbTitle">In orbit</h2>
+    <div class="stars" id="dbStars" role="img" aria-label="Stars"></div>
+    <div class="dbgrid" id="dbStats"></div>
+    <div class="dbcols">
+      <div class="dbbox good"><div class="k">What your choices did</div><ul id="dbGood"></ul></div>
+      <div class="dbbox warn"><div class="k">To do better</div><ul id="dbBad"></ul></div>
+    </div>
+    <div class="row"><button type="button" class="primary" id="btnRetry">Fly again</button></div>
+  </div>
+</div>
+
+<script src="js/vendor/three.min.js"></script>
+<script src="js/vendor/OrbitControls.js"></script>
+<script src="js/physics.js"></script>
+<script src="js/lines.js"></script>
+<script src="js/scene.js"></script>
+<script src="js/game.js"></script>
+</body>
+</html>

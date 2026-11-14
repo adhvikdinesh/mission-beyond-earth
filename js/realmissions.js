@@ -7,4 +7,4 @@ window.REAL_MISSIONS = [
   { name: "Suomi NPP (VIIRS)", agency: "NASA / NOAA", launched: "28 Oct 2011", orbit: "824 km, sun-synchronous, 1:30 pm pass", swath: "3,040 km", fire: "Fire detection at 375 m pixels: the data behind NASA FIRMS" },
   { name: "Landsat 8", agency: "NASA / USGS", launched: "11 Feb 2013", orbit: "705 km, sun-synchronous, 10:00 am pass", swath: "185 km", fire: "Sharp 30 m images used to map burned areas, but it revisits each place only every 16 days" },
 ];
-window.REAL_MISSIONS_SOURCE = "Sources: NASA Earth Observing System mission pages (Terra, Aqua, Suomi NPP), NASA FIRMS, USGS Landsat 8.";
+window.REAL_MISSIONS_SOURCE = "Public mission facts (NASA, NOAA, USGS). Check the official mission pages for details.";

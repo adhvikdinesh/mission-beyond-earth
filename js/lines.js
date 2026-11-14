@@ -4,12 +4,14 @@
  */
 window.LINES = {
   prelaunch: "Good morning, Commander. We're on the pad at Kourou. Run the Go/No-Go poll before we light the engines.",
+  countdown: "Final countdown. All systems are GO. Stand by for ignition.",
   pollDone: "All stations are GO. Launch when ready, then push the throttle up to lift off.",
   liftoffWeak: "Engines are lit, but we're not moving. Thrust must be stronger than the rocket's weight. More throttle!",
   liftoff: "Liftoff! We have cleared the tower.",
   maxqWarn: "Max Q is coming: the air is pushing hardest on the rocket now. Throttle down to about 70% to protect it.",
   maxqPassed: "Max Q passed. You can go back to full throttle.",
   turn: "Start the gravity turn. Follow the green marker: to reach orbit you need to go sideways, not just up.",
+  turnAuto: "Gravity turn started. The autopilot is tipping us over: to reach orbit we must go sideways, not just up.",
   stageReady: "Stage 1 is empty. Press STAGE to drop it and light the second stage.",
   staged: "Stage separation confirmed. Second stage ignition!",
   fairingReady: "We're above the thick air. Press FAIRING to drop the nose cone.",

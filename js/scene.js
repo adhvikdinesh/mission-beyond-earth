@@ -34,6 +34,11 @@
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     renderer.setSize(container.clientWidth, container.clientHeight);
     container.appendChild(renderer.domElement);
+    if (window.Ascent) Ascent.init(renderer);
+    const haze = document.createElement("div");
+    haze.style.cssText = "position:absolute;inset:0;pointer-events:none;background:#6f95c4;opacity:0";
+    container.appendChild(haze);
+    const SWITCH = 26000;
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(55, container.clientWidth / container.clientHeight, 1e-7, 2000);
     const controls = new THREE.OrbitControls(camera, renderer.domElement);
@@ -169,7 +174,7 @@
     const SKY_LOW = new THREE.Color(0x5d9fe0), SKY_MID = new THREE.Color(0x0a2552), SKY_SPACE = new THREE.Color(0x000000);
     let view = "cockpit";
 
-    const st = { pos: new THREE.Vector3(), up: new THREE.Vector3(), east: new THREE.Vector3(), alt: 0, pitch: 0, flame: 0, shake: 0 };
+    const st = { pos: new THREE.Vector3(), up: new THREE.Vector3(), east: new THREE.Vector3(), alt: 0, ground: 0, pitch: 0, flame: 0, shake: 0 };
 
     S.setView = function (v) {
       view = v; controls.enabled = v === "tracking"; rocket.visible = v === "tracking";
@@ -189,7 +194,7 @@
       // local downrange direction in the launch plane
       const r = Math.hypot(s.x, s.y), ex = s.y / r, ey = -s.x / r;
       st.east.copy(EAST0).multiplyScalar(ex).addScaledVector(UP0, ey).normalize();
-      st.alt = r - R_M; st.pitch = s.pitch; st.flame = info.flame; st.shake = info.shake || 0;
+      st.alt = r - R_M; st.ground = R_M * Math.atan2(s.x, s.y); st.pitch = s.pitch; st.flame = info.flame; st.shake = info.shake || 0;
       if (info.trail) {
         if (!lastTrail || lastTrail.distanceTo(st.pos) > 0.0004) {
           if (tn >= TMAX) { tpos.copyWithin(0, 3); tn = TMAX - 1; }
@@ -199,10 +204,15 @@
         }
       }
     };
-    S.resetTrail = function () { tn = 0; lastTrail = null; tg.setDrawRange(0, 0); };
+    S.resetTrail = function () { tn = 0; lastTrail = null; tg.setDrawRange(0, 0); if (window.Ascent) Ascent.reset(); };
 
-    S.render = function () {
+    S.render = function (dt) {
       const alt = st.alt;
+      haze.style.opacity = view === "cockpit" ? Math.max(0, 1 - Math.abs(alt - SWITCH) / 1800) * 0.9 : 0;
+      if (view === "cockpit" && alt < SWITCH && window.Ascent) {
+        Ascent.render(renderer, st, container.clientWidth / container.clientHeight, dt || 0.016);
+        return;
+      }
       // sky colour by altitude
       const k1 = Math.min(1, Math.max(0, alt / 25000)), k2 = Math.min(1, Math.max(0, (alt - 25000) / 50000));
       sky.copy(SKY_LOW).lerp(SKY_MID, k1).lerp(SKY_SPACE, k2);

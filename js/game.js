@@ -3,6 +3,7 @@
   "use strict";
   const P = window.LaunchPhysics, L = window.LINES, $ = (s) => document.querySelector(s);
   const MISSION = { name: "EarthWatch-1", payload: 150, target: 500000 };
+  let mode = "cadet";
   const ORBIT_MIN = 160000;
 
   Scene.init($("#stage"));
@@ -60,7 +61,7 @@
     Scene.resetTrail();
     $("#throttle").value = 0; $("#pitch").value = 0;
     setWarp(1);
-    $("#debrief").hidden = true;
+    $("#debrief").hidden = true; $("#countdown").hidden = true; pit.disabled = false;
     pollReset();
     $("#poll").hidden = false;
     say(L.prelaunch);
@@ -81,11 +82,30 @@
     poll[b.dataset.poll] = true; b.textContent = "GO"; b.className = "go";
     if (poll.wx && poll.range && poll.veh) { $("#btnLaunch").disabled = false; say(L.pollDone); }
   }));
+  document.querySelectorAll("[data-mode]").forEach((b) => b.addEventListener("click", () => {
+    mode = b.dataset.mode;
+    document.querySelectorAll("[data-mode]").forEach((x) => { x.classList.toggle("on", x === b); x.setAttribute("aria-checked", x === b); });
+  }));
   $("#btnLaunch").addEventListener("click", () => {
-    audio.init(); $("#poll").hidden = true; game.phase = "ignition"; game.ignitionAt = performance.now();
-    say(L.pollDone);
+    audio.init(); $("#poll").hidden = true; game.phase = "countdown"; game.count = 10; game.countAt = performance.now();
+    pit.disabled = mode === "cadet";
+    say(L.countdown);
     updatePhases();
   });
+  function countdown(now) {
+    const left = 10 - Math.floor((now - game.countAt) / 1000);
+    const el = $("#countdown");
+    if (left !== game.count) {
+      game.count = left;
+      if (left > 0) { el.hidden = false; el.innerHTML = left + (left <= 3 ? "<small>IGNITION SEQUENCE</small>" : ""); audio.beep(left <= 3 ? 990 : 660, 0.12); }
+      if (left === 3 && mode === "cadet") thr.value = 100;
+      if (left <= 0) {
+        el.innerHTML = "<small>LIFTOFF</small>"; setTimeout(() => { el.hidden = true; }, 1200);
+        game.phase = "ignition"; game.ignitionAt = now;
+        if (+thr.value === 0) say(L.liftoffWeak);
+      }
+    }
+  }
 
   /* ---------- controls ---------- */
   const thr = $("#throttle"), pit = $("#pitch");
@@ -156,7 +176,7 @@
   /* ---------- phases ---------- */
   const ORDER = ["pad", "liftoff", "maxq", "turn", "stage", "fairing", "insert", "circ", "release"];
   function currentChip() {
-    if (game.phase === "pad" || game.phase === "ignition" && !s.lifted) return "pad";
+    if (game.phase === "pad" || game.phase === "countdown" || game.phase === "ignition" && !s.lifted) return "pad";
     if (game.phase === "released") return "done";
     if (game.phase === "orbit") return "release";
     if (game.phase === "coast" || game.phase === "circ") return "circ";
@@ -197,8 +217,8 @@
       if (s.q > game.peakQ) game.peakQ = s.q;
       if (game.said.maxqWarn && s.q > 14000) game.lowestThrottleAtQ = Math.min(game.lowestThrottleAtQ, s.throttle);
       if (game.said.maxqWarn && !game.said.maxqPassed && game.peakQ > 15000 && s.q < game.peakQ * 0.6) once("maxqPassed", L.maxqPassed);
-      if (alt > 3000 && game.said.maxqPassed && !game.said.turn) once("turn", L.turn);
-      if (alt > 1500 && !game.said.turnEarly && !game.said.maxqWarn) { game.said.turnEarly = true; $("#dirLine").textContent = L.turn; }
+      if (alt > 3000 && game.said.maxqPassed && !game.said.turn) once("turn", mode === "cadet" ? L.turnAuto : L.turn);
+      if (alt > 1500 && !game.said.turnEarly && !game.said.maxqWarn) { game.said.turnEarly = true; $("#dirLine").textContent = mode === "cadet" ? L.turnAuto : L.turn; }
       if (s.stage === 1 && s.prop1 <= 0) { if (game.emptyAt == null) game.emptyAt = s.t; once("stageReady", L.stageReady, true); }
       if (s.fairing && alt > 110000 && s.q < P.ROCKET.fairingSafeQ) once("fairingReady", L.fairingReady, true);
       if (s.stage === 2 && s.throttle > 0 && o.apo >= MISSION.target - 5000 && o.peri < ORBIT_MIN) once("apoReady", L.apoReady, true);
@@ -236,7 +256,7 @@
     const success = game.phase === "released";
     let stars = 0;
     const tgt = MISSION.target / 1000, apo = o.escape ? Infinity : o.apo / 1000, peri = o.peri / 1000;
-    const fuel2 = Math.round(s.prop2), qPeak = game.peakQ / 1000, lim = P.ROCKET.maxQ / 1000;
+    const fuel2 = Math.round(s.prop2), qPeak = Math.min(s.maxQSeen, P.ROCKET.maxQ) / 1000, lim = P.ROCKET.maxQ / 1000;
     if (success) {
       stars = 1;
       const roundness = Math.abs(apo - peri), err = Math.max(Math.abs(apo - tgt), Math.abs(peri - tgt));
@@ -251,7 +271,7 @@
       bad.push(`The mission failed because ${why[game.failed] || "something went wrong"}.`);
     }
     if (qPeak > 0) {
-      if (qPeak < lim) good.push(`Peak air pressure was ${qPeak.toFixed(1)} kPa, under the ${lim} kPa limit${game.lowestThrottleAtQ < 0.9 ? ", because you throttled down at Max Q" : ""}.`);
+      if (game.failed !== "maxq" && qPeak < lim) good.push(`Peak air pressure was ${qPeak.toFixed(1)} kPa, under the ${lim} kPa limit${game.lowestThrottleAtQ < 0.9 ? ", because you throttled down at Max Q" : ""}.`);
     }
     if (game.stagedAt != null && game.emptyAt != null) {
       const late = game.stagedAt - game.emptyAt;
@@ -295,12 +315,12 @@
     $("#gApo").textContent = o.escape ? "escape" : o.apo > 0 ? Math.round(o.apo / 1000) : "—";
     $("#gPeri").textContent = !o.escape && o.peri > -R_DISPLAY ? (o.peri > 0 ? Math.round(o.peri / 1000) : "below ground") : "—";
     $("#thrVal").textContent = Math.round(s.throttle * 100) + "%";
-    $("#pitchVal").textContent = Math.round(s.pitch) + "°";
+    $("#pitchVal").textContent = Math.round(s.pitch) + "°" + (mode === "cadet" ? " AUTO" : "");
     let gp = P.guidancePitch(alt);
     if (game.phase === "coast" || game.phase === "circ" || game.phase === "orbit") gp = 90;
     $("#pitchTarget").textContent = Math.round(gp) + "°";
     $("#pitchMark").style.left = `calc(${gp / 95 * 100}% )`;
-    const clock = game.phase === "pad" ? "T−00:10" : game.phase === "ignition" && !s.lifted ? "T−00:00" : "T+" + fmtT(s.t);
+    const clock = game.phase === "pad" ? "T−00:10" : game.phase === "countdown" ? "T−00:" + String(Math.max(0, game.count)).padStart(2, "0") : game.phase === "ignition" && !s.lifted ? "T−00:00" : "T+" + fmtT(s.t);
     $("#clock").textContent = clock;
     // time warp allowed only in safe moments
     const canFast = s.throttle === 0 && alt > 100000;
@@ -313,7 +333,12 @@
   let last = performance.now(), frame = 0;
   function loop(now) {
     const dt = Math.min(0.05, (now - last) / 1000); last = now;
-    const flying = game.phase !== "pad" && game.phase !== "failed" && game.phase !== "released";
+    if (game.phase === "countdown") countdown(now);
+    if (mode === "cadet" && game.phase !== "pad" && game.phase !== "countdown") {
+      const auto = (game.phase === "coast" || game.phase === "circ" || game.phase === "orbit" || game.phase === "released") ? 90 : P.guidancePitch(P.altitude(s));
+      pit.value = Math.round(auto);
+    }
+    const flying = game.phase !== "pad" && game.phase !== "countdown" && game.phase !== "failed" && game.phase !== "released";
     if (flying) {
       s.throttle = +thr.value / 100;
       if (s.stage === 1 && s.prop1 <= 0) s.throttle = Math.min(s.throttle, 1);
@@ -327,10 +352,11 @@
     const flame = game.phase === "failed" ? 0 : Math.min(1, eng.T / 224e3 * (s.stage === 1 ? 1 : 3));
     audio.engine(game.phase === "failed" ? 0 : Math.min(0.6, eng.T / 224e3 * 0.6 * (P.altitude(s) < 60000 ? 1 : 0.3)));
     Scene.update(s, { trail: s.lifted, flame: flame, shake: s.lifted && P.altitude(s) < 40000 ? flame * (1 + s.q / 10000) : 0 });
-    Scene.render();
+    Scene.render(dt);
     if (++frame % 3 === 0) { hud(); updateButtons(); updatePhases(); }
     requestAnimationFrame(loop);
   }
+  window.__mbe = { get s() { return s; }, get game() { return game; } }; // debug hook for testing
   reset();
   requestAnimationFrame(loop);
 })();

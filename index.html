@@ -77,10 +77,16 @@
       <div class="prow"><div><b>Range safety</b><span>Airspace and sea zone clear</span></div><button type="button" data-poll="range">Poll</button></div>
       <div class="prow"><div><b>Vehicle</b><span>Tanks full, engines healthy</span></div><button type="button" data-poll="veh">Poll</button></div>
     </div>
+    <div class="modes" role="radiogroup" aria-label="Pilot mode">
+      <button type="button" role="radio" aria-checked="true" data-mode="cadet" class="on"><b>Cadet</b><small>The rocket steers itself. You make the big calls.</small></button>
+      <button type="button" role="radio" aria-checked="false" data-mode="commander"><b>Commander</b><small>Full manual control, including steering.</small></button>
+    </div>
     <div class="cargo">Payload: <b id="cargoName">EarthWatch-1</b> · <b id="cargoMass">150 kg</b> · target orbit <b id="cargoOrbit">500 km</b></div>
     <button type="button" class="primary" id="btnLaunch" disabled>LAUNCH</button>
   </div>
 </div>
+
+<div class="countdown" id="countdown" hidden aria-live="assertive"></div>
 
 <div class="modal" id="debrief" hidden>
   <div class="card wide">
@@ -100,6 +106,7 @@
 <script src="js/vendor/OrbitControls.js"></script>
 <script src="js/physics.js"></script>
 <script src="js/lines.js"></script>
+<script src="js/ascent.js"></script>
 <script src="js/scene.js"></script>
 <script src="js/game.js"></script>
 </body>

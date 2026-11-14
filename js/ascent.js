@@ -87,7 +87,11 @@
       side: THREE.BackSide, depthWrite: false, depthTest: false, fog: false,
       uniforms: { alt: { value: 0 }, sunDir: { value: new THREE.Vector3(0.55, 0.62, 0.56).normalize() } },
       vertexShader: "varying vec3 vDir; void main(){ vDir=normalize(position); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }",
-      fragmentShader: `uniform float alt; uniform vec3 sunDir; varying vec3 vDir;
+      fragmentShader: `precision highp float; uniform float alt; uniform vec3 sunDir; varying vec3 vDir;
+        float h(vec2 p){ p=fract(p*vec2(0.1031,0.1030)); p+=dot(p,p.yx+33.33); return fract((p.x+p.y)*p.x); }
+        float vn(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+          return mix(mix(h(i),h(i+vec2(1.0,0.0)),f.x),mix(h(i+vec2(0.0,1.0)),h(i+vec2(1.0,1.0)),f.x),f.y); }
+        float fbm(vec2 p){ float a=0.5, r=0.0; for(int i=0;i<5;i++){ r+=a*vn(p); p*=2.03; a*=0.5; } return r; }
         void main(){
           float e=vDir.y; float k=clamp(alt/26000.0,0.0,1.0);
           vec3 zen=mix(vec3(0.17,0.42,0.80),vec3(0.0,0.02,0.09),pow(k,0.7));
@@ -96,6 +100,13 @@
           c=mix(c,hor*0.9,smoothstep(0.0,-0.25,e));
           float sd=max(dot(vDir,sunDir),0.0);
           c+=vec3(1.0,0.92,0.78)*(pow(sd,600.0)*3.0+pow(sd,12.0)*0.25*(1.0-k*0.6));
+          // white clouds, drawn in the sky itself (no textures: same look on every GPU)
+          if(e>0.0){
+            vec2 q=vDir.xz/(e+0.12)*1.6;
+            float n=fbm(q)+0.5*fbm(q*2.3+7.0);
+            float cl=smoothstep(0.62,0.95,n)*smoothstep(0.0,0.08,e)*(1.0-smoothstep(0.35,0.8,e))*(1.0-k);
+            c=mix(c,vec3(0.97,0.97,0.98),clamp(cl,0.0,0.9));
+          }
           gl_FragColor=vec4(c,1.0);
         }`,
     });
@@ -120,16 +131,6 @@
     tower.position.set(0, 0, -4.2); scene.add(tower);
     const pad = new THREE.Mesh(new THREE.BoxGeometry(40, 2, 40), grey); pad.position.y = -0.9; scene.add(pad);
 
-    // cloud deck
-    const cloudTex = puffTexture("rgba(255,255,255,");
-    for (let i = 0; i < 260; i++) {
-      const m = new THREE.SpriteMaterial({ map: cloudTex, transparent: true, depthWrite: false, opacity: rnd(0.55, 0.95) });
-      const sp = new THREE.Sprite(m); const s = rnd(500, 1600);
-      sp.scale.set(s * 1.6, s, 1);
-      const a = Math.random() * Math.PI * 2, d = Math.sqrt(Math.random()) * 45000;
-      sp.position.set(Math.cos(a) * d + 8000, rnd(1700, 3200), Math.sin(a) * d);
-      scene.add(sp);
-    }
     puffTex = puffTexture("rgba(225,222,215,");
 
     // the launcher itself (seen from the launch camera)

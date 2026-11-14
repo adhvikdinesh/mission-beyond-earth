@@ -355,6 +355,12 @@
 
     if (op) opsLines(op, good, bad);
     const dbo = $("#dbOps"); dbo.hidden = !op;
+    let rm = document.getElementById("dbReal");
+    if (!rm) { rm = document.createElement("details"); rm.id = "dbReal"; rm.className = "dbReal"; dbo.parentNode.insertBefore(rm, dbo.nextSibling); }
+    rm.hidden = !op;
+    if (op && window.REAL_MISSIONS) rm.innerHTML = `<summary>Compare with real NASA fire-watching satellites</summary><table><tr><th>Satellite</th><th>Launched</th><th>Orbit</th><th>Swath</th><th>Fire watching</th></tr>
+      <tr class="you"><td>Your ${MD.MISSION.name}</td><td>Today</td><td>${Math.round((P.orbit(s).apo + P.orbit(s).peri) / 2000)} km, sun-synchronous, 10:30 am pass</td><td>${designEval.cam.swathKm} km</td><td>${designEval.cam.name}: ${op.sent} fires delivered in one day</td></tr>
+      ${REAL_MISSIONS.map((m) => `<tr><td>${m.name}<br><small>${m.agency}</small></td><td>${m.launched}</td><td>${m.orbit}</td><td>${m.swath}</td><td>${m.fire}</td></tr>`).join("")}</table><p class="src">${REAL_MISSIONS_SOURCE}</p>`;
     if (op) dbo.innerHTML = [["Fires on the map", op.total], ["Photographed", op.seen], ["Delivered", op.sent], ["Avg. delay", op.delayMin != null ? op.delayMin + " min" : "—"]].map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join("");
     if (op && op.total) { const share = op.sent / op.total; if (share < 0.1 && stars > 1) stars--; if (share >= 0.35 && stars < 3) stars++; }
     $("#dbEyebrow").textContent = success ? "Mission success" : "Mission lost";

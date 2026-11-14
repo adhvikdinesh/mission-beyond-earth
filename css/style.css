@@ -241,3 +241,8 @@ body.view-cockpit .keyhint { bottom: auto; top: 196px; left: auto; right: 16px; 
 @media (max-width:720px){.steps3{grid-template-columns:1fr}}
 .opsHint{font-size:13px;line-height:1.45;color:#9fb3c8;margin:4px 0}
 .filebtn{display:inline-flex;align-items:center;cursor:pointer;margin-left:8px}
+.dbReal{margin:10px 0;border:1px solid rgba(0,212,255,.18);border-radius:8px;padding:8px 12px;font-size:13px}
+.dbReal summary{cursor:pointer;color:#00d4ff;font-family:"JetBrains Mono",monospace}
+.dbReal table{width:100%;border-collapse:collapse;margin-top:8px}
+.dbReal th,.dbReal td{text-align:left;padding:5px 6px;border-bottom:1px solid rgba(255,255,255,.07);vertical-align:top}
+.dbReal th{color:#7f93a8;font-weight:500}.dbReal tr.you td{color:#00ff88}.dbReal small{color:#7f93a8}.dbReal .src{color:#7f93a8;font-size:12px}
